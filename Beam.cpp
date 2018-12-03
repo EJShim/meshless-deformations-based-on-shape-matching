@@ -7,7 +7,7 @@
 #include <vtkRectilinearGridToTetrahedra.h>
 #include <vtkMath.h>
 #include <time.h>
-
+#include <vtkPointData.h>
 
 
 Beam::Beam(){
@@ -30,12 +30,18 @@ void Beam::Initialize(){
 
     m_edgeExtractor = vtkSmartPointer<vtkExtractEdges>::New();
     m_edgeExtractor->SetInputData(m_data);
-    m_edgeExtractor->Update();
+    m_edgeExtractor->Update();    
 
     vtkSmartPointer<vtkTubeFilter> tubes = vtkSmartPointer<vtkTubeFilter>::New();
     tubes->SetInputConnection(m_edgeExtractor->GetOutputPort());
     tubes->SetRadius(0.1);
     tubes->SetNumberOfSides(6);
+
+
+    //Show Surface
+    m_surfaceExtractor = vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
+    m_surfaceExtractor->SetInputData(m_data);
+    m_surfaceExtractor->Update();
 
 
     // Create a mapper and actor.
@@ -75,7 +81,10 @@ void Beam::InitializeSystem(){
         m_orgInverseMatrix.push_back(lu.inverse());
     }
 
-    //Initialize Force and Velocity
+    //Initialize Force and Velocity, color
+    m_vertexColors = vtkSmartPointer<vtkUnsignedCharArray>::New();
+    m_vertexColors->SetNumberOfComponents(3);
+    m_vertexColors->SetName("Colors");
 
     m_iCenterOfMass = Eigen::Vector3d(0, 0, 0);
     int nPoints = m_data->GetNumberOfPoints();
@@ -87,7 +96,9 @@ void Beam::InitializeSystem(){
         m_force.push_back(force);
 
         m_iCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
+        m_vertexColors->InsertNextTuple3(0, 0, 0);
     }
+    m_data->GetPointData()->SetScalars(m_vertexColors);
 
     m_iCenterOfMass /= nPoints;
 
@@ -127,58 +138,54 @@ void Beam::ComputeMesheless(){
         Apq += m_mass * pi * m_qi[idx].transpose();
     }
 
+    Apq /= nPoints;
+
+
     //Inverse SQRT???
     Eigen::Matrix3d S = Apq.transpose() * Apq;
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(S);
     Eigen::Matrix3d sqrt_S = es.operatorInverseSqrt();
-    
 
     Eigen::Matrix3d R = Apq * sqrt_S;
 
-    std::cout << sqrt_S << std::endl<<std::endl;
-
-    // std::cout << R << std::endl<< std::endl;
-
-    // std::vector<Eigen::Vector3d> gi;
+    
+    double alpha = 0.5;
 
 
-    double alpha = 0.3;
-
-
-    Eigen::MatrixXd results(2, 3);    
-    Eigen::Matrix2d factor(2, 2);
+    Eigen::MatrixXd results(2, 3);
+    Eigen::Matrix2d factor(2, 3);
     factor  << 1, -alpha/m_timeStep,
                 m_timeStep, 1-alpha;
     Eigen::MatrixXd current(2, 3);
     Eigen::MatrixXd ground(2, 3);
 
 
-    for(int idx = 0 ; idx < nPoints ; idx++){
-        Eigen::Vector3d gi =  R*m_qi[idx]+m_iCenterOfMass ;
 
-        
-        current.col(0) = m_velocity[idx];
-        current.col(1) = Eigen::Vector3d(m_data->GetPoint(idx));
+    //Update Position
+    for(int idx = 9 ; idx < nPoints ; idx++){
+        Eigen::Vector3d gi =  R*m_qi[idx]+CenterOfMass;
 
-        ground.col(0) = alpha * gi / m_timeStep;
-        ground.col(1) = alpha * gi;
+        current.row(0) = m_velocity[idx];
+        current.row(1) = Eigen::Vector3d(m_data->GetPoint(idx));
 
+        ground.row(0) = (alpha * gi / m_timeStep) + m_timeStep*(m_force[idx] / m_mass);
+        ground.row(1) = alpha * gi;
 
         results = factor*current + ground;
 
         //Velocity
-        m_velocity[idx] = results.col(0);
+        m_velocity[idx] = results.row(0);
+        Eigen::Vector3d color = m_velocity[idx].normalized() * 255.0;
+        m_vertexColors->SetTuple3(idx, abs(color[0]), abs(color[1]), abs(color[2]));
 
-        //Position
-        Eigen::Vector3d position = results.col(1);
-
-        
-        m_data->GetPoints()->SetPoint(idx, position[0], position[1], position[2]);
+        //Position        
+        m_data->GetPoints()->SetPoint(idx, results.row(1)[0], results.row(1)[1], results.row(1)[2]);
     }
 
+
+    //Update Vis Info
     m_edgeExtractor->Modified();
-
-
+    m_surfaceExtractor->Modified();
 }
 
 
@@ -270,4 +277,5 @@ void Beam::Update(){
     }
 
     m_edgeExtractor->Modified();
+    m_surfaceExtractor->Modified();
 }

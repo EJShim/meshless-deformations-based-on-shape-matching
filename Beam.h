@@ -4,6 +4,8 @@
 #include <vtkUnstructuredGrid.h>
 #include <vtkExtractEdges.h>
 #include <eigen3/Eigen/Dense>
+#include <vtkDataSetSurfaceFilter.h>
+#include <vtkUnsignedCharArray.h>
 
 class Beam{
     public:
@@ -14,9 +16,11 @@ class Beam{
     vtkSmartPointer<vtkUnstructuredGrid> m_data;
     vtkSmartPointer<vtkExtractEdges> m_edgeExtractor;
     vtkSmartPointer<vtkActor> m_actor;
+    vtkSmartPointer<vtkDataSetSurfaceFilter> m_surfaceExtractor;    
+    vtkSmartPointer<vtkUnsignedCharArray> m_vertexColors;
 
     //Boundary
-    double m_timeStep = 0.1;
+    double m_timeStep = 0.01;
     double m_gravity = -9.8;
     double m_mass = 1.0;
 
