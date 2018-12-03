@@ -76,12 +76,23 @@ void Beam::InitializeSystem(){
     }
 
     //Initialize Force and Velocity
-    for(int idx = 0 ; idx < m_data->GetNumberOfPoints() ; idx++){
+
+    m_iCenterOfMass = Eigen::Vector3d(0, 0, 0);
+    int nPoints = m_data->GetNumberOfPoints();
+    for(int idx = 0 ; idx < nPoints ; idx++){
         Eigen::Vector3d velocity(0, 0, 0);
         Eigen::Vector3d force(0, 0, 0);
 
         m_velocity.push_back(velocity);
         m_force.push_back(force);
+
+        m_iCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
+    }
+
+    m_iCenterOfMass /= nPoints;
+
+    for(int idx = 0 ; idx<nPoints ; idx++){
+        m_qi.push_back( Eigen::Vector3d(m_data->GetPoint(idx)) - m_iCenterOfMass  );
     }
 
     //Initialize Factors
@@ -94,6 +105,80 @@ void Beam::InitializeSystem(){
 		0.0, 0.0, 0.0, 0.0, 1.0 - 2.0 * m_poissonsRatio, 0.0,
 		0.0, 0.0, 0.0, 0.0, 0.0, 1.0 - 2.0 * m_poissonsRatio;
     m_E = (m_youngsModulus / ((1.0f + m_poissonsRatio)*(1.0 - 2.0 * m_poissonsRatio)))*m_E;
+}
+
+
+void Beam::ComputeMesheless(){
+
+    UpdateForce();
+    
+    Eigen::Vector3d CenterOfMass = Eigen::Vector3d(0, 0, 0);    
+    int nPoints = m_data->GetNumberOfPoints();
+    for(int idx = 0 ; idx < nPoints ; idx++){
+        CenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
+    }
+    CenterOfMass /= nPoints;
+
+
+    //Calculate Apq
+    Eigen::Matrix3d Apq = Eigen::MatrixXd::Zero(3,3);
+    for(int idx = 0 ; idx < nPoints ; idx++){
+        Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - CenterOfMass;
+        Apq += m_mass * pi * m_qi[idx].transpose();
+    }
+
+    //Inverse SQRT???
+    Eigen::Matrix3d S = Apq.transpose() * Apq;
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(S);
+    Eigen::Matrix3d sqrt_S = es.operatorInverseSqrt();
+    
+
+    Eigen::Matrix3d R = Apq * sqrt_S;
+
+    std::cout << sqrt_S << std::endl<<std::endl;
+
+    // std::cout << R << std::endl<< std::endl;
+
+    // std::vector<Eigen::Vector3d> gi;
+
+
+    double alpha = 0.3;
+
+
+    Eigen::MatrixXd results(2, 3);    
+    Eigen::Matrix2d factor(2, 2);
+    factor  << 1, -alpha/m_timeStep,
+                m_timeStep, 1-alpha;
+    Eigen::MatrixXd current(2, 3);
+    Eigen::MatrixXd ground(2, 3);
+
+
+    for(int idx = 0 ; idx < nPoints ; idx++){
+        Eigen::Vector3d gi =  R*m_qi[idx]+m_iCenterOfMass ;
+
+        
+        current.col(0) = m_velocity[idx];
+        current.col(1) = Eigen::Vector3d(m_data->GetPoint(idx));
+
+        ground.col(0) = alpha * gi / m_timeStep;
+        ground.col(1) = alpha * gi;
+
+
+        results = factor*current + ground;
+
+        //Velocity
+        m_velocity[idx] = results.col(0);
+
+        //Position
+        Eigen::Vector3d position = results.col(1);
+
+        
+        m_data->GetPoints()->SetPoint(idx, position[0], position[1], position[2]);
+    }
+
+    m_edgeExtractor->Modified();
+
+
 }
 
 

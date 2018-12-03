@@ -16,7 +16,7 @@ class Beam{
     vtkSmartPointer<vtkActor> m_actor;
 
     //Boundary
-    double m_timeStep = 0.000007;
+    double m_timeStep = 0.1;
     double m_gravity = -9.8;
     double m_mass = 1.0;
 
@@ -28,6 +28,10 @@ class Beam{
     //Force
     std::vector<Eigen::Vector3d> m_force;
     std::vector<Eigen::Vector3d> m_velocity;
+    
+    ///For Masehlsess
+    Eigen::Vector3d m_iCenterOfMass;
+    std::vector<Eigen::Vector3d> m_qi;
 
 
     //Original Inverse Matrix for All Tetra
@@ -45,6 +49,7 @@ class Beam{
     public:
     vtkSmartPointer<vtkActor> GetActor(){return m_actor;}
     void ComputeFEM();
+    void ComputeMesheless();
     void Update();
 
 
