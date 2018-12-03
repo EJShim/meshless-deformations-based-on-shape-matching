@@ -22,8 +22,7 @@ Beam::~Beam(){
 void Beam::Initialize(){
     // Create a cube.
     vtkSmartPointer<vtkRectilinearGridToTetrahedra> formMesh = vtkSmartPointer<vtkRectilinearGridToTetrahedra>::New();
-    formMesh->SetInput(2, 2, 10, 1, 1, 1, 0.1);
-    formMesh->RememberVoxelIdOn();
+    formMesh->SetInput(2, 2, 10, 1, 1, 1, 0.1);    
     formMesh->SetTetraPerCellTo6();
     formMesh->Update();
 
