@@ -13,6 +13,7 @@ set(SRC_FILES
 main
 Mainwindow
 Beam
+PickInteractor
 )
 
 add_executable(physics ${SRC_FILES})

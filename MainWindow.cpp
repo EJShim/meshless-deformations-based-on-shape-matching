@@ -27,13 +27,14 @@ Mainwindow::~Mainwindow()
 
 
 void Mainwindow::Tick(){
-    //Calculate Based on FERM
-	// m_currentObject.ComputeFEM();
-	
 
     m_currentObject.ComputeMesheless();
-    // m_currentObject.Update();
 
+    int pickID = m_interactorStyle->GetID();
+    if(pickID != -1){
+        double* position = m_interactorStyle->GetPosition();
+        m_currentObject.SetPointPosition(pickID, position[0], position[1] , position[2]);
+    }
 
 
 	m_renderer->GetRenderWindow()->Render();	
@@ -45,7 +46,7 @@ QWidget* Mainwindow::InitCentralWidget(){
 
     // Visualize
 	m_renderer = vtkSmartPointer<vtkRenderer>::New();
-    m_renderer->SetBackground(.1, .1, .1);
+    m_renderer->SetBackground(0, 0, 0);
 	m_renderer->AddActor(m_currentObject.GetActor());
 	m_renderer->ResetCamera();	
 	m_renderer->ResetCameraClippingRange();
@@ -53,10 +54,10 @@ QWidget* Mainwindow::InitCentralWidget(){
 
     vtkSmartPointer<vtkGenericOpenGLRenderWindow> renderWindow = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
 	renderWindow->AddRenderer(m_renderer);	
-	// vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor = vtkSmartPointer<vtkRenderWindowInteractor>::New();
-	// vtkSmartPointer<vtkInteractorStyleTrackballCamera> style = vtkSmartPointer<vtkInteractorStyleTrackballCamera>::New();
-	// renderWindowInteractor->SetInteractorStyle(style);
-	// renderWindowInteractor->SetRenderWindow(renderWindow);	
+	vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor = vtkSmartPointer<vtkRenderWindowInteractor>::New();
+    m_interactorStyle = vtkSmartPointer<PickInteractor>::New();
+	renderWindowInteractor->SetInteractorStyle(m_interactorStyle);
+	renderWindowInteractor->SetRenderWindow(renderWindow);	
 
     m_rendererWidget->SetRenderWindow(renderWindow);
     renderWindow->Render();

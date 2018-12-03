@@ -20,8 +20,8 @@ class Beam{
     vtkSmartPointer<vtkUnsignedCharArray> m_vertexColors;
 
     //Boundary
-    double m_timeStep = 0.01;
-    double m_gravity = -9.8;
+    double m_timeStep = 0.001;
+    double m_gravity = 0;
     double m_mass = 1.0;
 
     double m_youngsModulus = 30000;
@@ -55,6 +55,8 @@ class Beam{
     void ComputeFEM();
     void ComputeMesheless();
     void Update();
+
+    void SetPointPosition(int ID, double x, double y, double z);
 
 
 };

@@ -8,17 +8,17 @@
 #include <vtkActor.h>
 #include <vtkRenderer.h>
 #include <QVTKOpenGLWidget.h>
+#include <PickInteractor.h>
 
 class Mainwindow : public QMainWindow
 {
 	Q_OBJECT
 
 private:
-	vtkSmartPointer<vtkPoints> beamPoints;
-	vtkSmartPointer<vtkActor> beamActor;
 
     QVTKOpenGLWidget* m_rendererWidget;
 	vtkSmartPointer<vtkRenderer> m_renderer;
+	vtkSmartPointer<PickInteractor> m_interactorStyle;
 	Beam m_currentObject;
 
 protected:

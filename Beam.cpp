@@ -96,9 +96,9 @@ void Beam::InitializeSystem(){
         m_force.push_back(force);
 
         m_iCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
-        m_vertexColors->InsertNextTuple3(0, 0, 0);
+        m_vertexColors->InsertNextTuple3(1, 1, 0);
     }
-    m_data->GetPointData()->SetScalars(m_vertexColors);
+    // m_data->GetPointData()->SetScalars(m_vertexColors);
 
     m_iCenterOfMass /= nPoints;
 
@@ -130,6 +130,8 @@ void Beam::ComputeMesheless(){
     }
     CenterOfMass /= nPoints;
 
+    
+
 
     //Calculate Apq
     Eigen::Matrix3d Apq = Eigen::MatrixXd::Zero(3,3);
@@ -137,8 +139,6 @@ void Beam::ComputeMesheless(){
         Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - CenterOfMass;
         Apq += m_mass * pi * m_qi[idx].transpose();
     }
-
-    Apq /= nPoints;
 
 
     //Inverse SQRT???
@@ -149,33 +149,37 @@ void Beam::ComputeMesheless(){
     Eigen::Matrix3d R = Apq * sqrt_S;
 
     
-    double alpha = 0.5;
+    double alpha = 0.3;
 
 
-    Eigen::MatrixXd results(2, 3);
-    Eigen::Matrix2d factor(2, 3);
+    
+    Eigen::Matrix2d factor(2, 2);
     factor  << 1, -alpha/m_timeStep,
-                m_timeStep, 1-alpha;
+                m_timeStep, 1-alpha;    
     Eigen::MatrixXd current(2, 3);
     Eigen::MatrixXd ground(2, 3);
 
 
 
     //Update Position
-    for(int idx = 9 ; idx < nPoints ; idx++){
+    for(int idx = nPoints-1 ; idx < nPoints ; idx++){
         Eigen::Vector3d gi =  R*m_qi[idx]+CenterOfMass;
+        Eigen::Vector3d xi = Eigen::Vector3d(m_data->GetPoint(idx));
 
         current.row(0) = m_velocity[idx];
-        current.row(1) = Eigen::Vector3d(m_data->GetPoint(idx));
+        current.row(1) = xi;
 
-        ground.row(0) = (alpha * gi / m_timeStep) + m_timeStep*(m_force[idx] / m_mass);
-        ground.row(1) = alpha * gi;
+        std::cout << gi.transpose() << "," << current.row(1) << std::endl;
 
-        results = factor*current + ground;
+        ground.row(0) = (alpha * (gi) / m_timeStep) + m_timeStep*(m_force[idx] / m_mass);
+        ground.row(1) = alpha * (gi);
+
+        Eigen::MatrixXd results = factor*current + ground;        
+        
 
         //Velocity
         m_velocity[idx] = results.row(0);
-        Eigen::Vector3d color = m_velocity[idx].normalized() * 255.0;
+        Eigen::Vector3d color = results.row(0).normalized() * 255.0;
         m_vertexColors->SetTuple3(idx, abs(color[0]), abs(color[1]), abs(color[2]));
 
         //Position        
@@ -183,7 +187,7 @@ void Beam::ComputeMesheless(){
     }
 
 
-    //Update Vis Info
+    // //Update Vis Info
     m_edgeExtractor->Modified();
     m_surfaceExtractor->Modified();
 }
@@ -276,6 +280,12 @@ void Beam::Update(){
         m_data->GetPoints()->SetPoint(idx, position[0], position[1], position[2]);
     }
 
+    m_edgeExtractor->Modified();
+    m_surfaceExtractor->Modified();
+}
+
+void Beam::SetPointPosition(int idx, double x, double y, double z){    
+    m_data->GetPoints()->SetPoint(m_data->GetNumberOfPoints()-1, x, y, z);
     m_edgeExtractor->Modified();
     m_surfaceExtractor->Modified();
 }
