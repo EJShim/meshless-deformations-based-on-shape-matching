@@ -1,14 +1,19 @@
 #include "Beam.h"
 #include <vtkCubeSource.h>
 #include <vtkPolyData.h>
-#include <vtkPolyDataMapper.h>
+#include <vtkDataSetMapper.h>
 #include <vtkProperty.h>
 #include <vtkTubeFilter.h>
 #include <vtkRectilinearGridToTetrahedra.h>
+#include <vtkPolyDataMapper.h>
 #include <vtkMath.h>
+#include <vtkUnstructuredGridGeometryFilter.h>
 #include <time.h>
 #include <vtkPointData.h>
-
+#include <vtkDataSetSurfaceFilter.h>
+#include <vtkExtractEdges.h>
+#include <vtkStructuredGrid.h>
+#include <vtkStructuredGridGeometryFilter.h>
 
 Beam::Beam(){
     m_actor = NULL;
@@ -27,21 +32,23 @@ void Beam::Initialize(){
     formMesh->Update();
 
     m_data = formMesh->GetOutput();
+    m_giData = vtkSmartPointer<vtkUnstructuredGrid>::New();
+    
 
-    m_edgeExtractor = vtkSmartPointer<vtkExtractEdges>::New();
-    m_edgeExtractor->SetInputData(m_data);
-    m_edgeExtractor->Update();    
+    vtkSmartPointer<vtkExtractEdges> edgeExtractor = vtkSmartPointer<vtkExtractEdges>::New();
+    edgeExtractor->SetInputData(m_data);
+    edgeExtractor->Update();    
 
     vtkSmartPointer<vtkTubeFilter> tubes = vtkSmartPointer<vtkTubeFilter>::New();
-    tubes->SetInputConnection(m_edgeExtractor->GetOutputPort());
+    tubes->SetInputConnection(edgeExtractor->GetOutputPort());
     tubes->SetRadius(0.1);
     tubes->SetNumberOfSides(6);
 
 
     //Show Surface
-    m_surfaceExtractor = vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
-    m_surfaceExtractor->SetInputData(m_data);
-    m_surfaceExtractor->Update();
+    vtkSmartPointer<vtkDataSetSurfaceFilter> surfaceExtractor = vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
+    surfaceExtractor->SetInputData(m_data);
+    surfaceExtractor->Update();
 
 
     // Create a mapper and actor.
@@ -51,6 +58,21 @@ void Beam::Initialize(){
     m_actor = vtkSmartPointer<vtkActor>::New();
     m_actor->SetMapper(mapper);
     m_actor->GetProperty()->SetColor(1, 1, 0);
+
+    //Show Temp data
+    m_giData->DeepCopy(m_data);
+    
+
+    
+    vtkSmartPointer<vtkDataSetMapper> giMapper = vtkSmartPointer<vtkDataSetMapper>::New();
+    giMapper->SetInputData(m_giData);
+
+    m_giActor =  vtkSmartPointer<vtkActor>::New();
+    m_giActor->SetMapper(giMapper);
+    m_giActor->GetProperty()->SetColor(1, 0, 0);
+    m_giActor->GetProperty()->SetPointSize(50);
+    m_giActor->GetProperty()->SetLineWidth(20.0);
+    m_giActor->GetProperty()->SetRepresentationToPoints();
 
 
     InitializeSystem();
@@ -98,7 +120,7 @@ void Beam::InitializeSystem(){
         m_iCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
         m_vertexColors->InsertNextTuple3(1, 1, 0);
     }
-    // m_data->GetPointData()->SetScalars(m_vertexColors);
+    m_giData->GetPointData()->SetScalars(m_vertexColors);
 
     m_iCenterOfMass /= nPoints;
 
@@ -122,7 +144,9 @@ void Beam::InitializeSystem(){
 void Beam::ComputeMesheless(){
 
     UpdateForce();
-    
+
+
+    //Get CenterOfMass    
     Eigen::Vector3d CenterOfMass = Eigen::Vector3d(0, 0, 0);    
     int nPoints = m_data->GetNumberOfPoints();
     for(int idx = 0 ; idx < nPoints ; idx++){
@@ -130,7 +154,6 @@ void Beam::ComputeMesheless(){
     }
     CenterOfMass /= nPoints;
 
-    
 
 
     //Calculate Apq
@@ -162,14 +185,15 @@ void Beam::ComputeMesheless(){
 
 
     //Update Position
-    for(int idx = nPoints-1 ; idx < nPoints ; idx++){
+    for(int idx = 9 ; idx < nPoints ; idx++){
+
         Eigen::Vector3d gi =  R*m_qi[idx]+CenterOfMass;
         Eigen::Vector3d xi = Eigen::Vector3d(m_data->GetPoint(idx));
 
         current.row(0) = m_velocity[idx];
         current.row(1) = xi;
 
-        std::cout << gi.transpose() << "," << current.row(1) << std::endl;
+        // std::cout << gi.transpose() << "," << current.row(1) << std::endl;
 
         ground.row(0) = (alpha * (gi) / m_timeStep) + m_timeStep*(m_force[idx] / m_mass);
         ground.row(1) = alpha * (gi);
@@ -184,12 +208,13 @@ void Beam::ComputeMesheless(){
 
         //Position        
         m_data->GetPoints()->SetPoint(idx, results.row(1)[0], results.row(1)[1], results.row(1)[2]);
+        m_giData->GetPoints()->SetPoint(idx, gi[0], gi[1], gi[2]);
     }
 
 
-    // //Update Vis Info
-    m_edgeExtractor->Modified();
-    m_surfaceExtractor->Modified();
+    // //Update Vis Info    
+    m_data->GetPoints()->Modified();
+    m_giData->GetPoints()->Modified();    
 }
 
 
@@ -280,12 +305,19 @@ void Beam::Update(){
         m_data->GetPoints()->SetPoint(idx, position[0], position[1], position[2]);
     }
 
-    m_edgeExtractor->Modified();
-    m_surfaceExtractor->Modified();
+    m_data->GetPoints()->Modified();
 }
 
 void Beam::SetPointPosition(int idx, double x, double y, double z){    
-    m_data->GetPoints()->SetPoint(m_data->GetNumberOfPoints()-1, x, y, z);
-    m_edgeExtractor->Modified();
-    m_surfaceExtractor->Modified();
+    m_selectedIdx = idx;
+    if(idx == -1) return;
+
+    //Temp
+    idx = m_data->GetNumberOfPoints()-1;
+    m_selectedIdx = idx;
+
+
+    m_velocity[idx] = Eigen::Vector3d(0.0, 0.0, 0.0);
+    m_data->GetPoints()->SetPoint(idx, x, y, z);
+    m_data->GetPoints()->Modified();
 }

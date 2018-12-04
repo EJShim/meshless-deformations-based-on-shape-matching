@@ -2,9 +2,7 @@
 #include <vtkSmartPointer.h>
 #include <vtkActor.h>
 #include <vtkUnstructuredGrid.h>
-#include <vtkExtractEdges.h>
 #include <eigen3/Eigen/Dense>
-#include <vtkDataSetSurfaceFilter.h>
 #include <vtkUnsignedCharArray.h>
 
 class Beam{
@@ -14,14 +12,18 @@ class Beam{
 
     protected:    
     vtkSmartPointer<vtkUnstructuredGrid> m_data;
-    vtkSmartPointer<vtkExtractEdges> m_edgeExtractor;
+    vtkSmartPointer<vtkUnstructuredGrid> m_giData;
+
+    
     vtkSmartPointer<vtkActor> m_actor;
-    vtkSmartPointer<vtkDataSetSurfaceFilter> m_surfaceExtractor;    
+    vtkSmartPointer<vtkActor> m_giActor;
+
+
     vtkSmartPointer<vtkUnsignedCharArray> m_vertexColors;
 
     //Boundary
     double m_timeStep = 0.001;
-    double m_gravity = 0;
+    double m_gravity = 0.0;
     double m_mass = 1.0;
 
     double m_youngsModulus = 30000;
@@ -41,6 +43,9 @@ class Beam{
     //Original Inverse Matrix for All Tetra
     std::vector<Eigen::Matrix3d> m_orgInverseMatrix;
 
+    //Seelected Point, Boundary Condition
+    int m_selectedIdx = -1;
+
 
     
 
@@ -52,11 +57,11 @@ class Beam{
 
     public:
     vtkSmartPointer<vtkActor> GetActor(){return m_actor;}
+    vtkSmartPointer<vtkActor> GetGiActor(){return m_giActor;}
+
     void ComputeFEM();
     void ComputeMesheless();
     void Update();
 
     void SetPointPosition(int ID, double x, double y, double z);
-
-
 };
