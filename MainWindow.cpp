@@ -28,14 +28,15 @@ Mainwindow::~Mainwindow()
 
 void Mainwindow::Tick(){
 
+    
+
     m_currentObject.ComputeMesheless();
 
     int pickID = m_interactorStyle->GetID();
-    if(pickID != -1){
-        double* position = m_interactorStyle->GetPosition();
-        m_currentObject.SetPointPosition(pickID, position[0], position[1] , position[2]);
-    }
-
+    double* position = m_interactorStyle->GetPosition();
+    m_currentObject.SetPointPosition(pickID, position[0], position[1] , position[2]);
+    
+    
 
 	m_renderer->GetRenderWindow()->Render();	
 
@@ -46,8 +47,8 @@ QWidget* Mainwindow::InitCentralWidget(){
 
     // Visualize
 	m_renderer = vtkSmartPointer<vtkRenderer>::New();
-    m_renderer->SetBackground(0, 0, 0);
-	m_renderer->AddActor(m_currentObject.GetActor());
+    m_renderer->SetBackground(.1, .1, .1);
+	m_renderer->AddActor(m_currentObject.GetActor());    
 	m_renderer->ResetCamera();	
 	m_renderer->ResetCameraClippingRange();
 
