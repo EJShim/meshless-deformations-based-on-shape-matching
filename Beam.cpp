@@ -149,7 +149,7 @@ void Beam::ComputeMesheless(){
     Eigen::Matrix3d R = Apq * sqrt_S;
 
     
-    double alpha = 0.3;
+    double alpha = 0.0003;
 
 
     
@@ -169,9 +169,10 @@ void Beam::ComputeMesheless(){
         current.row(0) = m_velocity[idx];
         current.row(1) = xi;
 
-        std::cout << gi.transpose() << "," << current.row(1) << std::endl;
 
-        ground.row(0) = (alpha * (gi) / m_timeStep) + m_timeStep*(m_force[idx] / m_mass);
+        std::cout << (gi-xi).transpose() << std::endl;
+
+        ground.row(0) = (alpha * (gi) / m_timeStep);
         ground.row(1) = alpha * (gi);
 
         Eigen::MatrixXd results = factor*current + ground;        
