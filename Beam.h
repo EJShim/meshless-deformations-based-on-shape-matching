@@ -13,10 +13,12 @@ class Beam{
     protected:
 
     //Data
-    vtkSmartPointer<vtkPolyData> m_data;    
+    vtkSmartPointer<vtkPolyData> m_data;  
+    vtkSmartPointer<vtkPolyData> m_gData;  
 
     //Actor For Rendering
     vtkSmartPointer<vtkActor> m_actor;
+    vtkSmartPointer<vtkActor> m_gActor;
 
     //Colors, for debug
     vtkSmartPointer<vtkUnsignedCharArray> m_vertexColors;
@@ -33,7 +35,10 @@ class Beam{
     ///For Masehlsess
     Eigen::Vector3d m_iCenterOfMass;
     std::vector<Eigen::Vector3d> m_qi;
+    std::vector<Eigen::VectorXd> m_Qi;
+    
     Eigen::Matrix3d m_Aqq;
+    Eigen::MatrixXd m_AQQ;
 
 
     //Seelected Point, Boundary Condition
@@ -49,7 +54,8 @@ class Beam{
     void UpdateForce();
 
     public:
-    vtkSmartPointer<vtkActor> GetActor(){return m_actor;}    
+    vtkSmartPointer<vtkActor> GetActor(){return m_actor;}
+    vtkSmartPointer<vtkActor> GetDebugActor(){return m_gActor;}
 
     void ComputeFEM();
     void ComputeMesheless();
