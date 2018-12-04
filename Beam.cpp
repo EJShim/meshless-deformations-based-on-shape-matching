@@ -181,12 +181,8 @@ void Beam::ComputeMesheless(){
     Eigen::Matrix3d A = Apq * m_Aqq;
     Eigen::MatrixXd AA = APQ * m_AQQ;
 
-    std::cout << AA << std::endl << std::endl;
 
-
-
-
-    double alpha = 0.5;
+    double alpha = 0.9;
     double beta = 0.9;
 
 
