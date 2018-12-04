@@ -1,35 +1,30 @@
 #pragma once
 #include <vtkSmartPointer.h>
 #include <vtkActor.h>
-#include <vtkUnstructuredGrid.h>
 #include <eigen3/Eigen/Dense>
 #include <vtkUnsignedCharArray.h>
+#include <vtkPolyData.h>
 
 class Beam{
     public:
     Beam();
     ~Beam();
 
-    protected:    
-    vtkSmartPointer<vtkUnstructuredGrid> m_data;
-    vtkSmartPointer<vtkUnstructuredGrid> m_giData;
+    protected:
 
-    
+    //Data
+    vtkSmartPointer<vtkPolyData> m_data;    
+
+    //Actor For Rendering
     vtkSmartPointer<vtkActor> m_actor;
-    vtkSmartPointer<vtkActor> m_giActor;
 
-
+    //Colors, for debug
     vtkSmartPointer<vtkUnsignedCharArray> m_vertexColors;
 
     //Boundary
     double m_timeStep = 0.001;
     double m_gravity = 0.0;
     double m_mass = 1.0;
-
-    double m_youngsModulus = 30000;
-    double m_poissonsRatio = 0.3;
-    Eigen::Matrix3d m_Identity;
-    Eigen::MatrixXd m_E;
 
     //Force
     std::vector<Eigen::Vector3d> m_force;
@@ -38,10 +33,8 @@ class Beam{
     ///For Masehlsess
     Eigen::Vector3d m_iCenterOfMass;
     std::vector<Eigen::Vector3d> m_qi;
+    Eigen::Matrix3d m_Aqq;
 
-
-    //Original Inverse Matrix for All Tetra
-    std::vector<Eigen::Matrix3d> m_orgInverseMatrix;
 
     //Seelected Point, Boundary Condition
     int m_selectedIdx = -1;
@@ -56,8 +49,7 @@ class Beam{
     void UpdateForce();
 
     public:
-    vtkSmartPointer<vtkActor> GetActor(){return m_actor;}
-    vtkSmartPointer<vtkActor> GetGiActor(){return m_giActor;}
+    vtkSmartPointer<vtkActor> GetActor(){return m_actor;}    
 
     void ComputeFEM();
     void ComputeMesheless();
