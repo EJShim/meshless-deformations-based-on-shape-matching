@@ -22,3 +22,5 @@ add_executable(physics ${SRC_FILES})
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
 target_link_libraries(physics ${VTK_LIBRARIES})
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/bunny.stl DESTINATION ${PROJECT_BINARY_DIR})

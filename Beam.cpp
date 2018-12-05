@@ -18,15 +18,12 @@ Beam::~Beam(){
 
 void Beam::Initialize(vtkSmartPointer<vtkPolyData> data){
   
-
+    //Clearn..
     vtkSmartPointer<vtkCleanPolyData> cleanPolyData = vtkSmartPointer<vtkCleanPolyData>::New();
     cleanPolyData->SetInputData(data);
     cleanPolyData->Update();
 
     m_data = cleanPolyData->GetOutput();
-
-    
-
 
     // Create a mapper and actor.
     vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
@@ -84,7 +81,7 @@ void Beam::InitializeSystem(){
         m_iCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
         m_vertexColors->InsertNextTuple3(1, 1, 0);
     }
-    // m_gData->GetPointData()->SetScalars(m_vertexColors);
+    m_gData->GetPointData()->SetScalars(m_vertexColors);
 
     m_iCenterOfMass /= nPoints;
 
@@ -154,7 +151,7 @@ void Beam::ComputeMesheless(){
     Eigen::MatrixXd AA = APQ * m_AQQ;
 
 
-    double alpha = 0.9;
+    double alpha = 0.4;
     double beta = 0.9;
     double damping = 0.05;
 
@@ -170,7 +167,7 @@ void Beam::ComputeMesheless(){
     // std::cout << AA << std::endl << std::endl;
 
     //Update Position
-    for(int idx = 1 ; idx < nPoints ; idx++){
+    for(int idx = 0 ; idx < nPoints ; idx++){
 
         Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - m_cCenterOfMass;
         
@@ -221,9 +218,6 @@ void Beam::UpdateForce(){
 void Beam::ApplyForce(int idx, double x, double y, double z){
     m_selectedIdx = idx;
     if(idx == -1) return;
-
-
-    // std::cout << GetTotalMass() << std::endl;
 
     m_force[idx] = GetTotalMass()*m_timeStep * Eigen::Vector3d(x, y, z);
 

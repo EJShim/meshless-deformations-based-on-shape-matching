@@ -11,6 +11,9 @@
 #include <vtkMatrix4x4.h>
 #include <vtkTransform.h>
 #include <vtkProperty.h>
+#include <vtkSTLReader.h>
+#include <QCoreApplication>
+#include <QDir>
 
 #include <QTimer>
 
@@ -35,6 +38,11 @@ Mainwindow::~Mainwindow()
 
 void Mainwindow::InitObjects(){
 
+    std::string stlPath = QCoreApplication::applicationDirPath().toStdString() + "/bunny.stl";
+    vtkSmartPointer<vtkSTLReader> reader = vtkSmartPointer<vtkSTLReader>::New();
+    reader->SetFileName(stlPath.c_str());
+    reader->Update();
+
 
     // TestObject 1. Beam
     vtkSmartPointer<vtkRectilinearGridToTetrahedra> formMesh = vtkSmartPointer<vtkRectilinearGridToTetrahedra>::New();
@@ -52,7 +60,7 @@ void Mainwindow::InitObjects(){
     cylinderSource->SetResolution(10);
     cylinderSource->Update();
 
-    m_currentObject = new Beam(surfaceExtractor->GetOutput());
+    m_currentObject = new Beam(reader->GetOutput());
 
 
     //Initialize Arrow Actor
