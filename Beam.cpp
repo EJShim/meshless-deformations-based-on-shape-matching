@@ -27,8 +27,7 @@ Beam::~Beam(){
 void Beam::Initialize(){
     // Create a cube.
     vtkSmartPointer<vtkRectilinearGridToTetrahedra> formMesh = vtkSmartPointer<vtkRectilinearGridToTetrahedra>::New();
-    formMesh->SetInput(2, 2, 2, 1, 1, 1, 1.0);    
-    formMesh->SetTetraPerCellTo6();
+    formMesh->SetInput(20, 20, 80, 10.0, 10.0, 10.0, 0.1);        
     formMesh->Update();
     vtkSmartPointer<vtkDataSetSurfaceFilter> surfaceExtractor = vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
     surfaceExtractor->SetInputData(formMesh->GetOutput());
@@ -61,6 +60,8 @@ void Beam::Initialize(){
     m_actor->SetMapper(mapper);
     m_actor->GetProperty()->SetColor(1, 1, 0);
     m_actor->GetProperty()->SetRepresentationToWireframe();
+    m_actor->GetProperty()->RenderPointsAsSpheresOn();
+    m_actor->GetProperty()->SetPointSize(15);
 
 
     //Create Debug Actor
@@ -75,7 +76,8 @@ void Beam::Initialize(){
     m_gActor->SetMapper(groundMapper);
     m_gActor->GetProperty()->SetColor(1, 0, 0);
     m_gActor->GetProperty()->SetRepresentationToPoints();
-    m_gActor->GetProperty()->SetPointSize(10);
+    m_gActor->GetProperty()->RenderPointsAsSpheresOn();
+    m_gActor->GetProperty()->SetPointSize(15);
     
     
 
@@ -134,12 +136,14 @@ void Beam::InitializeSystem(){
 
 void Beam::ComputeMesheless(){
     //Get CenterOfMass    
-    Eigen::Vector3d CenterOfMass = Eigen::Vector3d(0, 0, 0);    
-    int nPoints = m_data->GetNumberOfPoints();
+    int nPoints = m_data->GetNumberOfPoints();    
+
+
+    m_cCenterOfMass = Eigen::Vector3d(0, 0, 0);        
     for(int idx = 0 ; idx < nPoints ; idx++){
-        CenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
+        m_cCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
     }
-    CenterOfMass /= nPoints;
+    m_cCenterOfMass /= nPoints;
 
 
 
@@ -148,7 +152,7 @@ void Beam::ComputeMesheless(){
     Eigen::MatrixXd APQ = Eigen::MatrixXd::Zero(3,9);
     
     for(int idx = 0 ; idx < nPoints ; idx++){
-        Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - CenterOfMass;
+        Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - m_cCenterOfMass;
         
         Apq += m_mass * pi * m_qi[idx].transpose();
         APQ += m_mass * pi * m_Qi[idx].transpose();
@@ -164,33 +168,47 @@ void Beam::ComputeMesheless(){
 
     Eigen::Matrix3d R = Apq * sqrt_S;
     Eigen::MatrixXd RR = Eigen::MatrixXd::Zero(3, 9);
-    RR.col(0) = R.col(0);
-    RR.col(1) = R.col(1);
-    RR.col(2) = R.col(2);
+    RR.block<3,3>(0,0) = R;
+    RR.block<3,3>(0,3) = R;
+    RR.block<3,3>(0,6) = R;
 
 
     //Matrix A
     Eigen::Matrix3d A = Apq * m_Aqq;
     Eigen::MatrixXd AA = APQ * m_AQQ;
 
+    // AA.block<3,3>(0,3) = AA.block<3,3>(0,3).array().pow(2);
+    // AA.block<3,3>(0,6) << Eigen::Matrix3d::Identity() * 10000;
+
+    
+    
+
+
+    std::cout << AA << std::endl << std::endl;
+
 
     double alpha = 0.5;
     double beta = 0.9;
+    double damping = 1.0;
 
 
     
     Eigen::Matrix2d factor(2, 2);
-    factor  << 0.1, -alpha/m_timeStep,
+    factor  << 1.0-damping, -alpha/m_timeStep,
                 m_timeStep, 1-alpha;    
     Eigen::MatrixXd current(2, 3);
     Eigen::MatrixXd ground(2, 3);
 
 
+    // std::cout << AA << std::endl << std::endl;
 
     //Update Position
-    for(int idx = 1 ; idx < nPoints ; idx++){
+    for(int idx = 17 ; idx < nPoints ; idx++){
 
-        Eigen::Vector3d gi =  ( beta*AA + (1-beta)*RR )*m_qi[idx]+CenterOfMass;
+        Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - m_cCenterOfMass;
+        
+
+        Eigen::Vector3d gi =  ( beta*AA + (1-beta)*RR )*m_qi[idx]+m_cCenterOfMass;
         Eigen::Vector3d xi = Eigen::Vector3d(m_data->GetPoint(idx));
 
         current.row(0) = m_velocity[idx];
@@ -237,13 +255,13 @@ void Beam::ApplyForce(int idx, double x, double y, double z){
     m_selectedIdx = idx;
     if(idx == -1) return;
 
-    m_force[idx] = 100000 * Eigen::Vector3d(x, y, z);
+    m_force[idx] = 1000 * Eigen::Vector3d(x, y, z);
 
 }
 
 
 double* Beam::GetCurrentSelectedPosition(int idx){
-    return m_data->GetPoint(idx);
+    return m_gData->GetPoint(idx);
 }
 
 void Beam::SetPointPosition(int idx, double x, double y, double z){    

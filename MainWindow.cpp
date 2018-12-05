@@ -7,6 +7,7 @@
 #include <vtkPolyDataMapper.h>
 #include <vtkMatrix4x4.h>
 #include <vtkTransform.h>
+#include <vtkProperty.h>
 
 Mainwindow::Mainwindow()
 {	
@@ -18,6 +19,9 @@ Mainwindow::Mainwindow()
 
     //Initialize Arrow Actor
     m_arrowData = vtkSmartPointer<vtkArrowSource>::New();
+    m_arrowData->SetShaftRadius(0.01);
+    m_arrowData->SetTipRadius(0.02);
+    m_arrowData->SetTipLength(0.1);
     m_arrowData->Update();
 
     vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
@@ -25,6 +29,7 @@ Mainwindow::Mainwindow()
 
     m_arrowActor = vtkSmartPointer<vtkActor>::New();
     m_arrowActor->SetMapper(mapper);
+    m_arrowActor->GetProperty()->SetColor(0.0, 0.1, 0.8);
 
     
 
@@ -45,7 +50,7 @@ void Mainwindow::Tick(){
 
     
 
-    m_currentObject.ComputeMesheless();
+    
 
     int pickID = m_interactorStyle->GetID();
 
@@ -67,6 +72,8 @@ void Mainwindow::Tick(){
         vtkMath::Subtract(end, start, force);
         m_currentObject.ApplyForce(pickID, force[0], force[1], force[2] );
     }
+
+    m_currentObject.ComputeMesheless();
 
 
     

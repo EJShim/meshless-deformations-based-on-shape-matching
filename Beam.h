@@ -24,9 +24,9 @@ class Beam{
     vtkSmartPointer<vtkUnsignedCharArray> m_vertexColors;    
 
     //Boundary
-    double m_timeStep = 0.001;
+    double m_timeStep = 0.01;
     double m_gravity = 0.0;
-    double m_mass = 1.0;
+    double m_mass = 0.5;
 
     //Force
     std::vector<Eigen::Vector3d> m_force;
@@ -34,6 +34,7 @@ class Beam{
     
     ///For Masehlsess
     Eigen::Vector3d m_iCenterOfMass;
+    Eigen::Vector3d m_cCenterOfMass;
     std::vector<Eigen::Vector3d> m_qi;
     std::vector<Eigen::VectorXd> m_Qi;
     
