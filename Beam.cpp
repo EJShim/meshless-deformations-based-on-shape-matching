@@ -27,7 +27,7 @@ Beam::~Beam(){
 void Beam::Initialize(){
     // Create a cube.
     vtkSmartPointer<vtkRectilinearGridToTetrahedra> formMesh = vtkSmartPointer<vtkRectilinearGridToTetrahedra>::New();
-    formMesh->SetInput(20, 20, 80, 10.0, 10.0, 10.0, 0.1);        
+    formMesh->SetInput(20, 20, 100, 10.0, 10.0, 10.0, 0.1);        
     formMesh->Update();
     vtkSmartPointer<vtkDataSetSurfaceFilter> surfaceExtractor = vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
     surfaceExtractor->SetInputData(formMesh->GetOutput());
@@ -58,7 +58,7 @@ void Beam::Initialize(){
 
     m_actor = vtkSmartPointer<vtkActor>::New();
     m_actor->SetMapper(mapper);
-    m_actor->GetProperty()->SetColor(1, 1, 0);
+    m_actor->GetProperty()->SetColor(1, 0, 0);
     m_actor->GetProperty()->SetRepresentationToWireframe();
     m_actor->GetProperty()->RenderPointsAsSpheresOn();
     m_actor->GetProperty()->SetPointSize(15);
@@ -74,8 +74,8 @@ void Beam::Initialize(){
 
     m_gActor = vtkSmartPointer<vtkActor>::New();
     m_gActor->SetMapper(groundMapper);
-    m_gActor->GetProperty()->SetColor(1, 0, 0);
-    m_gActor->GetProperty()->SetRepresentationToPoints();
+    m_gActor->GetProperty()->SetColor(.9, .9, 0);
+    // m_gActor->GetProperty()->SetRepresentationToPoints();
     m_gActor->GetProperty()->RenderPointsAsSpheresOn();
     m_gActor->GetProperty()->SetPointSize(15);
     
@@ -107,7 +107,7 @@ void Beam::InitializeSystem(){
         m_iCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
         m_vertexColors->InsertNextTuple3(1, 1, 0);
     }
-    // m_data->GetPointData()->SetScalars(m_vertexColors);
+    m_gData->GetPointData()->SetScalars(m_vertexColors);
 
     m_iCenterOfMass /= nPoints;
 
@@ -169,28 +169,17 @@ void Beam::ComputeMesheless(){
     Eigen::Matrix3d R = Apq * sqrt_S;
     Eigen::MatrixXd RR = Eigen::MatrixXd::Zero(3, 9);
     RR.block<3,3>(0,0) = R;
-    RR.block<3,3>(0,3) = R;
-    RR.block<3,3>(0,6) = R;
+    
 
 
     //Matrix A
     Eigen::Matrix3d A = Apq * m_Aqq;
     Eigen::MatrixXd AA = APQ * m_AQQ;
 
-    AA.block<3,3>(0,0) = Eigen::Matrix3d::Identity() * 2;
-    AA.block<3,3>(0,3) = Eigen::Matrix3d::Identity() * 2;
-    AA.block<3,3>(0,6) = Eigen::Matrix3d::Identity();
 
-    
-    
-
-
-    std::cout << AA << std::endl << std::endl;
-
-
-    double alpha = 0.5;
+    double alpha = 0.9;
     double beta = 0.9;
-    double damping = 1.0;
+    double damping = 0.05;
 
 
     
@@ -209,7 +198,7 @@ void Beam::ComputeMesheless(){
         Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - m_cCenterOfMass;
         
 
-        Eigen::Vector3d gi =  ( beta*AA + (1-beta)*RR )*m_qi[idx]+m_cCenterOfMass;
+        Eigen::Vector3d gi =  ( beta*AA + (1-beta)*RR )*m_Qi[idx]+ m_cCenterOfMass;
         Eigen::Vector3d xi = Eigen::Vector3d(m_data->GetPoint(idx));
 
         current.row(0) = m_velocity[idx];

@@ -133,7 +133,7 @@ QWidget* Mainwindow::InitCentralWidget(){
     // Visualize
 	m_renderer = vtkSmartPointer<vtkRenderer>::New();
     m_renderer->SetBackground(.1, .1, .1);
-	m_renderer->AddActor(m_currentObject.GetActor());    
+	// m_renderer->AddActor(m_currentObject.GetActor());    
     m_renderer->AddActor(m_currentObject.GetDebugActor());
 	m_renderer->ResetCamera();	
 	m_renderer->ResetCameraClippingRange();

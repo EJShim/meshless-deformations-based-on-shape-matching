@@ -25,8 +25,8 @@ class Beam{
 
     //Boundary
     double m_timeStep = 0.1;
-    double m_gravity = 0.0;
-    double m_mass = 0.5;
+    double m_gravity = -0.0;
+    double m_mass = 1.0;
 
     //Force
     std::vector<Eigen::Vector3d> m_force;
