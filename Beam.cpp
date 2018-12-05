@@ -81,7 +81,7 @@ void Beam::InitializeSystem(){
         m_iCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
         m_vertexColors->InsertNextTuple3(1, 1, 0);
     }
-    m_gData->GetPointData()->SetScalars(m_vertexColors);
+    // m_gData->GetPointData()->SetScalars(m_vertexColors);
 
     m_iCenterOfMass /= nPoints;
 
@@ -151,7 +151,7 @@ void Beam::ComputeMesheless(){
     Eigen::MatrixXd AA = APQ * m_AQQ;
 
 
-    double alpha = 0.4;
+    double alpha = 0.9;
     double beta = 0.9;
     double damping = 0.05;
 

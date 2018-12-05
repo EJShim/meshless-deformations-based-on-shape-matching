@@ -4,3 +4,5 @@ trying to implement (https://www.cs.drexel.edu/~david/Classes/Papers/MeshlessDef
 
 TODO : Set User Interaction as applying force, current : setting position (DONE)
 TODO : mesh rendering
+
+![](thumbnail.gif)
