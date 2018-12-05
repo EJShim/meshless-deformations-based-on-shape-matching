@@ -177,8 +177,9 @@ void Beam::ComputeMesheless(){
     Eigen::Matrix3d A = Apq * m_Aqq;
     Eigen::MatrixXd AA = APQ * m_AQQ;
 
-    // AA.block<3,3>(0,3) = AA.block<3,3>(0,3).array().pow(2);
-    // AA.block<3,3>(0,6) << Eigen::Matrix3d::Identity() * 10000;
+    AA.block<3,3>(0,0) = Eigen::Matrix3d::Identity() * 2;
+    AA.block<3,3>(0,3) = Eigen::Matrix3d::Identity() * 2;
+    AA.block<3,3>(0,6) = Eigen::Matrix3d::Identity();
 
     
     
@@ -255,7 +256,7 @@ void Beam::ApplyForce(int idx, double x, double y, double z){
     m_selectedIdx = idx;
     if(idx == -1) return;
 
-    m_force[idx] = 1000 * Eigen::Vector3d(x, y, z);
+    m_force[idx] = 10 * Eigen::Vector3d(x, y, z);
 
 }
 
