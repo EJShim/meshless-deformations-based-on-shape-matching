@@ -4,6 +4,9 @@
 #include <vtkRenderWindowInteractor.h>
 #include <vtkInteractorStyleTrackballCamera.h>
 #include <QTimer>
+#include <vtkPolyDataMapper.h>
+#include <vtkMatrix4x4.h>
+#include <vtkTransform.h>
 
 Mainwindow::Mainwindow()
 {	
@@ -12,6 +15,18 @@ Mainwindow::Mainwindow()
 	
     //Initialize Renderer
     setCentralWidget(InitCentralWidget());
+
+    //Initialize Arrow Actor
+    m_arrowData = vtkSmartPointer<vtkArrowSource>::New();
+    m_arrowData->Update();
+
+    vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputConnection(m_arrowData->GetOutputPort());
+
+    m_arrowActor = vtkSmartPointer<vtkActor>::New();
+    m_arrowActor->SetMapper(mapper);
+
+    
 
 
     //Set Event Loop
@@ -33,13 +48,76 @@ void Mainwindow::Tick(){
     m_currentObject.ComputeMesheless();
 
     int pickID = m_interactorStyle->GetID();
+
+    
     double* position = m_interactorStyle->GetPosition();
-    m_currentObject.SetPointPosition(pickID, position[0], position[1] , position[2]);
+    
+    if(pickID == -1){
+        m_renderer->RemoveActor(m_arrowActor);
+    }else{
+        
+        m_renderer->AddActor(m_arrowActor);
+
+        double* startPosition = m_currentObject.GetCurrentSelectedPosition(pickID);
+        double start[3] = {startPosition[0], startPosition[1], startPosition[2]};
+        double end[3] = {position[0], position[1], position[2]};
+        UpdateArrow(start, end);
+
+        double force[3];
+        vtkMath::Subtract(end, start, force);
+        m_currentObject.ApplyForce(pickID, force[0], force[1], force[2] );
+    }
+
+
+    
+    // m_currentObject.SetPointPosition(pickID, position[0], position[1] , position[2]);
     
     
 
+    m_renderer->ResetCameraClippingRange();
 	m_renderer->GetRenderWindow()->Render();	
 
+}
+
+void Mainwindow::UpdateArrow(double startPoint[3], double endPoint[3]){
+    // Compute a basis
+    double normalizedX[3];
+    double normalizedY[3];
+    double normalizedZ[3];
+
+    // The X axis is a vector from start to end
+    vtkMath::Subtract(endPoint, startPoint, normalizedX);
+    double length = vtkMath::Norm(normalizedX);
+    vtkMath::Normalize(normalizedX);
+
+    // The Z axis is an arbitrary vector cross X
+    double arbitrary[3];
+    arbitrary[0] = vtkMath::Random(-10,10);
+    arbitrary[1] = vtkMath::Random(-10,10);
+    arbitrary[2] = vtkMath::Random(-10,10);
+    vtkMath::Cross(normalizedX, arbitrary, normalizedZ);
+    vtkMath::Normalize(normalizedZ);
+
+    // The Y axis is Z cross X
+    vtkMath::Cross(normalizedZ, normalizedX, normalizedY);
+    vtkSmartPointer<vtkMatrix4x4> matrix = vtkSmartPointer<vtkMatrix4x4>::New();
+
+    // Create the direction cosine matrix
+    matrix->Identity();
+    for (unsigned int i = 0; i < 3; i++)
+    {
+        matrix->SetElement(i, 0, normalizedX[i]);
+        matrix->SetElement(i, 1, normalizedY[i]);
+        matrix->SetElement(i, 2, normalizedZ[i]);
+    }    
+
+    // Apply the transforms
+    vtkSmartPointer<vtkTransform> transform =  vtkSmartPointer<vtkTransform>::New();
+    transform->Translate(startPoint);
+    transform->Concatenate(matrix);
+    transform->Scale(length, length, length);
+
+    m_arrowActor->SetUserTransform(transform);
 }
 
 QWidget* Mainwindow::InitCentralWidget(){

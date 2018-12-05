@@ -9,6 +9,8 @@
 #include <vtkRenderer.h>
 #include <QVTKOpenGLWidget.h>
 #include <PickInteractor.h>
+#include <vtkArrowSource.h>
+
 
 class Mainwindow : public QMainWindow
 {
@@ -21,8 +23,14 @@ private:
 	vtkSmartPointer<PickInteractor> m_interactorStyle;
 	Beam m_currentObject;
 
+	///Force Visualization	
+    vtkSmartPointer<vtkArrowSource> m_arrowData;
+    vtkSmartPointer<vtkActor> m_arrowActor;
+
 protected:
     QWidget* InitCentralWidget();
+
+	void UpdateArrow(double start[3], double end[3]);
 
 public:
 	Mainwindow();

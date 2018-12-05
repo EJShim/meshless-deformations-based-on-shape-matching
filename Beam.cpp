@@ -133,10 +133,6 @@ void Beam::InitializeSystem(){
 
 
 void Beam::ComputeMesheless(){
-
-    UpdateForce();
-
-
     //Get CenterOfMass    
     Eigen::Vector3d CenterOfMass = Eigen::Vector3d(0, 0, 0);    
     int nPoints = m_data->GetNumberOfPoints();
@@ -153,10 +149,6 @@ void Beam::ComputeMesheless(){
     
     for(int idx = 0 ; idx < nPoints ; idx++){
         Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - CenterOfMass;
-        // Eigen::VectorXd Pi(9);
-        // Pi << pi[0], pi[1], pi[2], pi[0]*pi[0], pi[1]*pi[1], pi[2]*pi[2], pi[0]*pi[1], pi[1]*pi[2], pi[2]*pi[0];
-        
-        
         
         Apq += m_mass * pi * m_qi[idx].transpose();
         APQ += m_mass * pi * m_Qi[idx].transpose();
@@ -182,7 +174,7 @@ void Beam::ComputeMesheless(){
     Eigen::MatrixXd AA = APQ * m_AQQ;
 
 
-    double alpha = 0.9;
+    double alpha = 0.5;
     double beta = 0.9;
 
 
@@ -202,10 +194,10 @@ void Beam::ComputeMesheless(){
         Eigen::Vector3d xi = Eigen::Vector3d(m_data->GetPoint(idx));
 
         current.row(0) = m_velocity[idx];
-        current.row(1) = xi;
+        current.row(1) = xi;        
 
 
-        ground.row(0) = (alpha * (gi) / m_timeStep);
+        ground.row(0) = (alpha * (gi) / m_timeStep) + m_timeStep*m_force[idx]/m_mass;
         ground.row(1) = alpha * (gi);
 
         Eigen::MatrixXd results = factor*current + ground;        
@@ -218,7 +210,7 @@ void Beam::ComputeMesheless(){
 
         //Position        
         m_data->GetPoints()->SetPoint(idx, results.row(1)[0], results.row(1)[1], results.row(1)[2]);
-        m_gData->GetPoints()->SetPoint(idx, results.row(1)[0], results.row(1)[1], results.row(1)[2]);
+        m_gData->GetPoints()->SetPoint(idx, gi[0], gi[1], gi[2]);
     }
 
 
@@ -226,6 +218,9 @@ void Beam::ComputeMesheless(){
     m_data->GetPoints()->Modified();
     m_gData->GetPoints()->Modified();
     m_actor->GetMapper()->Update();
+
+
+    UpdateForce();
 }
 
 void Beam::UpdateForce(){
@@ -236,6 +231,19 @@ void Beam::UpdateForce(){
             m_force[idxPoint] = force;
     }
     
+}
+
+void Beam::ApplyForce(int idx, double x, double y, double z){
+    m_selectedIdx = idx;
+    if(idx == -1) return;
+
+    m_force[idx] = 100000 * Eigen::Vector3d(x, y, z);
+
+}
+
+
+double* Beam::GetCurrentSelectedPosition(int idx){
+    return m_data->GetPoint(idx);
 }
 
 void Beam::SetPointPosition(int idx, double x, double y, double z){    

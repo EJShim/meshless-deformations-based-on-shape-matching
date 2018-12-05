@@ -21,7 +21,7 @@ class Beam{
     vtkSmartPointer<vtkActor> m_gActor;
 
     //Colors, for debug
-    vtkSmartPointer<vtkUnsignedCharArray> m_vertexColors;
+    vtkSmartPointer<vtkUnsignedCharArray> m_vertexColors;    
 
     //Boundary
     double m_timeStep = 0.001;
@@ -62,4 +62,7 @@ class Beam{
     void Update();
 
     void SetPointPosition(int ID, double x, double y, double z);
+    void ApplyForce(int ID, double x, double y, double z);
+
+    double* GetCurrentSelectedPosition(int id);
 };

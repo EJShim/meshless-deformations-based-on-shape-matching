@@ -23,9 +23,14 @@ class PickInteractor : public vtkInteractorStyleTrackballCamera{
     int m_id;
 
     ///Picked Position
-   double m_position[3];
+    double m_startPosition[3];
+    double m_position[3];
+
 
    public:
    int GetID(){return m_id;}
+
+
    double* GetPosition(){return m_position;}
+   double* GetStartPosition(){return m_startPosition;}
 };

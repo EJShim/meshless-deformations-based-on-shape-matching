@@ -9,6 +9,10 @@ PickInteractor::PickInteractor(){
     m_position[0] = 0.0;
     m_position[1] = 0.0;
     m_position[2] = 0.0;
+
+    m_startPosition[0] = 0.0;
+    m_startPosition[1] = 0.0;
+    m_startPosition[2] = 0.0;
 }
 
 PickInteractor::~PickInteractor(){
@@ -17,16 +21,16 @@ PickInteractor::~PickInteractor(){
 
 void PickInteractor::OnLeftButtonDown(){    
 
-    m_pointPicker->Pick(this->Interactor->GetEventPosition()[0], this->Interactor->GetEventPosition()[1], 0,
-this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+    m_pointPicker->Pick(this->Interactor->GetEventPosition()[0], this->Interactor->GetEventPosition()[1], 0, this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
-      m_pointPicker->GetPickPosition(m_position);
-      m_id = m_pointPicker->GetPointId();
-      
+    m_pointPicker->GetPickPosition(m_position);
+    m_pointPicker->GetPickPosition(m_startPosition);
+    m_id = m_pointPicker->GetPointId();
+    
 
-      if(m_id == -1){
-          vtkInteractorStyleTrackballCamera::OnLeftButtonDown();
-      }
+    if(m_id == -1){
+        vtkInteractorStyleTrackballCamera::OnLeftButtonDown();
+    }
 }
 
 void PickInteractor::OnMouseMove(){
@@ -54,4 +58,8 @@ void PickInteractor::OnLeftButtonUp(){
     m_position[0] = 0.0;
     m_position[1] = 0.0;
     m_position[2] = 0.0;
+
+    m_startPosition[0] = 0.0;
+    m_startPosition[1] = 0.0;
+    m_startPosition[2] = 0.0;
 }
