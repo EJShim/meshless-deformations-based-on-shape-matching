@@ -1,52 +1,29 @@
 #include "Beam.h"
-#include <vtkCubeSource.h>
 #include <vtkProperty.h>
-#include <vtkCubeSource.h>
-#include <vtkRectilinearGridToTetrahedra.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkMath.h>
 #include <time.h>
 #include <vtkPointData.h>
-#include <vtkDataSetSurfaceFilter.h>
-#include <vtkExtractEdges.h>
-#include <vtkStructuredGrid.h>
-#include <vtkStructuredGridGeometryFilter.h>
-#include <vtkUnstructuredGrid.h>
-#include <vtkCylinderSource.h>
 #include <vtkPolyDataNormals.h>
+#include <vtkCleanPolyData.h>
 
-Beam::Beam(){
+Beam::Beam(vtkSmartPointer<vtkPolyData> data){
     m_actor = NULL;
-    Initialize();
+    Initialize(data);
 }
 
 Beam::~Beam(){
 
 }
 
-void Beam::Initialize(){
-    // Create a cube.
-    vtkSmartPointer<vtkRectilinearGridToTetrahedra> formMesh = vtkSmartPointer<vtkRectilinearGridToTetrahedra>::New();
-    formMesh->SetInput(20, 20, 100, 10.0, 10.0, 10.0, 0.1);        
-    formMesh->Update();
-    vtkSmartPointer<vtkDataSetSurfaceFilter> surfaceExtractor = vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
-    surfaceExtractor->SetInputData(formMesh->GetOutput());
-    surfaceExtractor->Update();
+void Beam::Initialize(vtkSmartPointer<vtkPolyData> data){
+  
 
+    vtkSmartPointer<vtkCleanPolyData> cleanPolyData = vtkSmartPointer<vtkCleanPolyData>::New();
+    cleanPolyData->SetInputData(data);
+    cleanPolyData->Update();
 
-    // Create a sphere
-    vtkSmartPointer<vtkCylinderSource> cylinderSource = vtkSmartPointer<vtkCylinderSource>::New();
-    cylinderSource->SetCenter(0.0, 0.0, 0.0);
-    cylinderSource->SetRadius(5.0);
-    cylinderSource->SetHeight(7.0);
-    cylinderSource->SetResolution(10);
-    cylinderSource->Update();
-
-      // Create a cube.
-    vtkSmartPointer<vtkCubeSource> cubeSource = vtkSmartPointer<vtkCubeSource>::New();
-    cubeSource->Update();
-
-    m_data = surfaceExtractor->GetOutput();
+    m_data = cleanPolyData->GetOutput();
 
     
 
@@ -107,7 +84,7 @@ void Beam::InitializeSystem(){
         m_iCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
         m_vertexColors->InsertNextTuple3(1, 1, 0);
     }
-    m_gData->GetPointData()->SetScalars(m_vertexColors);
+    // m_gData->GetPointData()->SetScalars(m_vertexColors);
 
     m_iCenterOfMass /= nPoints;
 
@@ -193,7 +170,7 @@ void Beam::ComputeMesheless(){
     // std::cout << AA << std::endl << std::endl;
 
     //Update Position
-    for(int idx = 17 ; idx < nPoints ; idx++){
+    for(int idx = 1 ; idx < nPoints ; idx++){
 
         Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - m_cCenterOfMass;
         
@@ -245,7 +222,10 @@ void Beam::ApplyForce(int idx, double x, double y, double z){
     m_selectedIdx = idx;
     if(idx == -1) return;
 
-    m_force[idx] = 10 * Eigen::Vector3d(x, y, z);
+
+    // std::cout << GetTotalMass() << std::endl;
+
+    m_force[idx] = GetTotalMass()*m_timeStep * Eigen::Vector3d(x, y, z);
 
 }
 
@@ -269,4 +249,8 @@ void Beam::SetPointPosition(int idx, double x, double y, double z){
 
     m_gData->GetPoints()->SetPoint(idx, x, y, z);
     m_gData->GetPoints()->Modified();
+}
+
+double Beam::GetTotalMass(){
+    return m_mass * m_data->GetNumberOfPoints();
 }

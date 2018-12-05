@@ -21,13 +21,15 @@ private:
     QVTKOpenGLWidget* m_rendererWidget;
 	vtkSmartPointer<vtkRenderer> m_renderer;
 	vtkSmartPointer<PickInteractor> m_interactorStyle;
-	Beam m_currentObject;
+	Beam* m_currentObject;
 
 	///Force Visualization	
     vtkSmartPointer<vtkArrowSource> m_arrowData;
     vtkSmartPointer<vtkActor> m_arrowActor;
 
 protected:
+
+	void InitObjects();
     QWidget* InitCentralWidget();
 
 	void UpdateArrow(double start[3], double end[3]);

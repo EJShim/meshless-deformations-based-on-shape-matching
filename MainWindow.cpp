@@ -3,19 +3,57 @@
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkInteractorStyleTrackballCamera.h>
-#include <QTimer>
+#include <vtkRectilinearGridToTetrahedra.h>
+#include <vtkDataSetSurfaceFilter.h>
+#include <vtkUnstructuredGrid.h>
+#include <vtkCylinderSource.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkMatrix4x4.h>
 #include <vtkTransform.h>
 #include <vtkProperty.h>
 
+#include <QTimer>
+
 Mainwindow::Mainwindow()
 {	
 	
-    //Initialize Toolbar
+    InitObjects();
 	
     //Initialize Renderer
     setCentralWidget(InitCentralWidget());
+
+    //Set Event Loop
+	QTimer* timer = new QTimer(this);
+	connect(timer, SIGNAL(timeout()), this, SLOT(Tick()));
+	timer->start(10);
+}
+
+
+Mainwindow::~Mainwindow()
+{
+}
+
+void Mainwindow::InitObjects(){
+
+
+    // TestObject 1. Beam
+    vtkSmartPointer<vtkRectilinearGridToTetrahedra> formMesh = vtkSmartPointer<vtkRectilinearGridToTetrahedra>::New();
+    formMesh->SetInput(20, 20, 100, 5.0, 5.0, 5.0, 0.1);        
+    formMesh->Update();
+    vtkSmartPointer<vtkDataSetSurfaceFilter> surfaceExtractor = vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
+    surfaceExtractor->SetInputData(formMesh->GetOutput());
+    surfaceExtractor->Update();
+
+    // TestObject2. Sphere - has backface problem
+    vtkSmartPointer<vtkCylinderSource> cylinderSource = vtkSmartPointer<vtkCylinderSource>::New();
+    cylinderSource->SetCenter(0.0, 0.0, 0.0);
+    cylinderSource->SetRadius(5.0);
+    cylinderSource->SetHeight(7.0);
+    cylinderSource->SetResolution(10);
+    cylinderSource->Update();
+
+    m_currentObject = new Beam(surfaceExtractor->GetOutput());
+
 
     //Initialize Arrow Actor
     m_arrowData = vtkSmartPointer<vtkArrowSource>::New();
@@ -31,27 +69,12 @@ Mainwindow::Mainwindow()
     m_arrowActor->SetMapper(mapper);
     m_arrowActor->GetProperty()->SetColor(0.0, 0.1, 0.8);
 
-    
-
-
-    //Set Event Loop
-	QTimer* timer = new QTimer(this);
-	connect(timer, SIGNAL(timeout()), this, SLOT(Tick()));
-	timer->start(10);
-}
-
-
-Mainwindow::~Mainwindow()
-{
 }
 
 
 void Mainwindow::Tick(){
 
     
-
-    
-
     int pickID = m_interactorStyle->GetID();
 
     
@@ -63,21 +86,21 @@ void Mainwindow::Tick(){
         
         m_renderer->AddActor(m_arrowActor);
 
-        double* startPosition = m_currentObject.GetCurrentSelectedPosition(pickID);
+        double* startPosition = m_currentObject->GetCurrentSelectedPosition(pickID);
         double start[3] = {startPosition[0], startPosition[1], startPosition[2]};
         double end[3] = {position[0], position[1], position[2]};
         UpdateArrow(start, end);
 
         double force[3];
         vtkMath::Subtract(end, start, force);
-        m_currentObject.ApplyForce(pickID, force[0], force[1], force[2] );
+        m_currentObject->ApplyForce(pickID, force[0], force[1], force[2] );
     }
 
-    m_currentObject.ComputeMesheless();
+    m_currentObject->ComputeMesheless();
 
 
     
-    // m_currentObject.SetPointPosition(pickID, position[0], position[1] , position[2]);
+    // m_currentObject->SetPointPosition(pickID, position[0], position[1] , position[2]);
     
     
 
@@ -133,8 +156,8 @@ QWidget* Mainwindow::InitCentralWidget(){
     // Visualize
 	m_renderer = vtkSmartPointer<vtkRenderer>::New();
     m_renderer->SetBackground(.1, .1, .1);
-	// m_renderer->AddActor(m_currentObject.GetActor());    
-    m_renderer->AddActor(m_currentObject.GetDebugActor());
+	// m_renderer->AddActor(m_currentObject->GetActor());    
+    m_renderer->AddActor(m_currentObject->GetDebugActor());
 	m_renderer->ResetCamera();	
 	m_renderer->ResetCameraClippingRange();
 

@@ -1,13 +1,14 @@
 #pragma once
 #include <vtkSmartPointer.h>
 #include <vtkActor.h>
-#include <eigen3/Eigen/Dense>
 #include <vtkUnsignedCharArray.h>
 #include <vtkPolyData.h>
 
+#include <eigen3/Eigen/Dense>
+
 class Beam{
     public:
-    Beam();
+    Beam(vtkSmartPointer<vtkPolyData> data);
     ~Beam();
 
     protected:
@@ -49,7 +50,7 @@ class Beam{
     
 
     protected:
-    void Initialize();
+    void Initialize(vtkSmartPointer<vtkPolyData> data);
     void InitializeSystem();
 
     void UpdateForce();
@@ -66,4 +67,5 @@ class Beam{
     void ApplyForce(int ID, double x, double y, double z);
 
     double* GetCurrentSelectedPosition(int id);
+    double GetTotalMass();
 };
