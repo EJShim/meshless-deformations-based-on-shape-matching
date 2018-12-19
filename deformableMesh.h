@@ -6,12 +6,15 @@
 
 #include <eigen3/Eigen/Dense>
 
-class Beam{
+class deformableMesh{
     public:
-    Beam(vtkSmartPointer<vtkPolyData> data);
-    ~Beam();
+    deformableMesh(vtkSmartPointer<vtkPolyData> data);
+    ~deformableMesh();
 
     protected:
+
+    //Clusteterd data
+    std::vector<std::vector<int>> m_clusterID;
 
     //Data
     vtkSmartPointer<vtkPolyData> m_data;  
@@ -52,6 +55,7 @@ class Beam{
     protected:
     void Initialize(vtkSmartPointer<vtkPolyData> data);
     void InitializeSystem();
+    void MakeCluster();
 
     void UpdateForce();
 

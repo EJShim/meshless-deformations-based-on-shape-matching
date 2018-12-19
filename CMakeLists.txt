@@ -12,7 +12,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(SRC_FILES
 main
 Mainwindow
-Beam
+deformableMesh
 PickInteractor
 )
 
