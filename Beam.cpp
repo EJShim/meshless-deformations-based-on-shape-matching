@@ -81,7 +81,7 @@ void Beam::InitializeSystem(){
         m_iCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
         m_vertexColors->InsertNextTuple3(1, 1, 0);
     }
-    // m_gData->GetPointData()->SetScalars(m_vertexColors);
+    m_gData->GetPointData()->SetScalars(m_vertexColors);
 
     m_iCenterOfMass /= nPoints;
 
