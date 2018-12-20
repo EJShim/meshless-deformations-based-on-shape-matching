@@ -1,4 +1,4 @@
-#include "Beam.h"
+#include "deformableMesh.h"
 #include <vtkProperty.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkMath.h>
@@ -6,17 +6,20 @@
 #include <vtkPointData.h>
 #include <vtkPolyDataNormals.h>
 #include <vtkCleanPolyData.h>
+#include <vtkOBBDicer.h>
+#include <vtkThreshold.h>
+#include <vtkGeometryFilter.h>
 
-Beam::Beam(vtkSmartPointer<vtkPolyData> data){
+deformableMesh::deformableMesh(vtkSmartPointer<vtkPolyData> data){
     m_actor = NULL;
     Initialize(data);
 }
 
-Beam::~Beam(){
+deformableMesh::~deformableMesh(){
 
 }
 
-void Beam::Initialize(vtkSmartPointer<vtkPolyData> data){
+void deformableMesh::Initialize(vtkSmartPointer<vtkPolyData> data){
   
     //Clearn..
     vtkSmartPointer<vtkCleanPolyData> cleanPolyData = vtkSmartPointer<vtkCleanPolyData>::New();
@@ -56,13 +59,12 @@ void Beam::Initialize(vtkSmartPointer<vtkPolyData> data){
     
 
     InitializeSystem();
+    MakeCluster();
 }
 
-void Beam::InitializeSystem(){    
+void deformableMesh::InitializeSystem(){    
 
     vtkSmartPointer<vtkPoints> pointSet = m_data->GetPoints();
-    
-
 
     //Initialize Force and Velocity, color
     m_vertexColors = vtkSmartPointer<vtkUnsignedCharArray>::New();
@@ -79,7 +81,8 @@ void Beam::InitializeSystem(){
         m_force.push_back(force);
 
         m_iCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
-        m_vertexColors->InsertNextTuple3(1, 1, 0);
+        m_vertexColors->InsertNextTuple3(255, 254, 0);
+        
     }
     m_gData->GetPointData()->SetScalars(m_vertexColors);
 
@@ -108,7 +111,53 @@ void Beam::InitializeSystem(){
 }
 
 
-void Beam::ComputeMesheless(){
+void deformableMesh::MakeCluster(){
+//Initialize Clustering
+    vtkSmartPointer<vtkOBBDicer> dicer = vtkSmartPointer<vtkOBBDicer>::New();
+    dicer->SetInputData(m_data);
+    dicer->SetNumberOfPieces(4);
+    dicer->SetDiceModeToSpecifiedNumberOfPieces();
+    dicer->Update();
+
+    std::cout << "Actual Number of Cluster : " << dicer->GetNumberOfActualPieces() << std::endl;
+
+    vtkSmartPointer<vtkThreshold> selector = vtkSmartPointer<vtkThreshold>::New();
+    selector->SetInputArrayToProcess(0, 0, 0, 0, "vtkOBBDicer_GroupIds");
+    selector->SetInputConnection(dicer->GetOutputPort());
+    selector->AllScalarsOff();
+
+
+    vtkMath::RandomSeed(8775070); // for reproducibility
+    for(int cluster=0 ; cluster<dicer->GetNumberOfActualPieces() ; cluster++){
+        selector->ThresholdBetween(cluster, cluster);
+
+        vtkSmartPointer<vtkGeometryFilter> geometryFilter = vtkSmartPointer<vtkGeometryFilter>::New();
+        geometryFilter->SetInputConnection(selector->GetOutputPort());
+        geometryFilter->Update();
+
+        vtkSmartPointer<vtkPolyData> subCluster = geometryFilter->GetOutput();
+        std::vector<int> idArray;
+
+
+
+        //Visualize Different Cluster Color
+        float color[3];
+        color[0] = vtkMath::Random(0, 255);
+        color[1] = vtkMath::Random(0, 255);
+        color[2] = vtkMath::Random(0, 255);
+        
+        for(int idx = 0 ; idx < subCluster->GetNumberOfPoints() ; idx++){
+            double* p = subCluster->GetPoint(idx);
+            int pointId = m_data->FindPoint(p);
+            
+            idArray.push_back(pointId);
+            m_vertexColors->SetTuple3(pointId, color[0], color[1], color[2]);
+        }
+        m_clusterID.push_back(idArray);
+    }    
+}
+
+void deformableMesh::ComputeMesheless(){
     //Get CenterOfMass    
     int nPoints = m_data->GetNumberOfPoints();    
 
@@ -188,7 +237,7 @@ void Beam::ComputeMesheless(){
         //Velocity, *0.9 for temporariy
         m_velocity[idx] = results.row(0);
         Eigen::Vector3d color = results.row(0).normalized() * 255.0;
-        m_vertexColors->SetTuple3(idx, abs(color[0]), abs(color[1]), abs(color[2]));
+        // m_vertexColors->SetTuple3(idx, abs(color[0]), abs(color[1]), abs(color[2]));
 
         //Position        
         m_data->GetPoints()->SetPoint(idx, results.row(1)[0], results.row(1)[1], results.row(1)[2]);
@@ -205,7 +254,7 @@ void Beam::ComputeMesheless(){
     UpdateForce();
 }
 
-void Beam::UpdateForce(){
+void deformableMesh::UpdateForce(){
 
     Eigen::Vector3d force(0.0, m_gravity*m_mass, 0.0);
 
@@ -215,7 +264,7 @@ void Beam::UpdateForce(){
     
 }
 
-void Beam::ApplyForce(int idx, double x, double y, double z){
+void deformableMesh::ApplyForce(int idx, double x, double y, double z){
     m_selectedIdx = idx;
     if(idx == -1) return;
 
@@ -224,11 +273,11 @@ void Beam::ApplyForce(int idx, double x, double y, double z){
 }
 
 
-double* Beam::GetCurrentSelectedPosition(int idx){
+double* deformableMesh::GetCurrentSelectedPosition(int idx){
     return m_gData->GetPoint(idx);
 }
 
-void Beam::SetPointPosition(int idx, double x, double y, double z){    
+void deformableMesh::SetPointPosition(int idx, double x, double y, double z){    
     m_selectedIdx = idx;
     if(idx == -1) return;
 
@@ -245,6 +294,6 @@ void Beam::SetPointPosition(int idx, double x, double y, double z){
     m_gData->GetPoints()->Modified();
 }
 
-double Beam::GetTotalMass(){
+double deformableMesh::GetTotalMass(){
     return m_mass * m_data->GetNumberOfPoints();
 }

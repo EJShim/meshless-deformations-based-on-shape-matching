@@ -1,5 +1,5 @@
 #pragma once
-#include <Beam.h>
+#include <deformableMesh.h>
 
 #include <iostream>
 #include <QMainWindow>
@@ -21,7 +21,7 @@ private:
     QVTKOpenGLWidget* m_rendererWidget;
 	vtkSmartPointer<vtkRenderer> m_renderer;
 	vtkSmartPointer<PickInteractor> m_interactorStyle;
-	Beam* m_currentObject;
+	deformableMesh* m_currentObject;
 
 	///Force Visualization	
     vtkSmartPointer<vtkArrowSource> m_arrowData;

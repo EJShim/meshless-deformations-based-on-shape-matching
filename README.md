@@ -1,4 +1,4 @@
-# physics_mesh_deform
+# Physics based mesh deformation (Meshless Deformations Based on Shape Matching)
 
 trying to implement (https://www.cs.drexel.edu/~david/Classes/Papers/MeshlessDeformations_SIG05.pdf)
 
