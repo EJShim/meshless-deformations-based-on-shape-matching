@@ -68,7 +68,7 @@ void deformableMesh::InitializeSystem(){
 
     //Initialize Force and Velocity, color
     m_vertexColors = vtkSmartPointer<vtkUnsignedCharArray>::New();
-    m_vertexColors->SetNumberOfComponents(3);
+    m_vertexColors->SetNumberOfComponents(1);
     m_vertexColors->SetName("Colors");
 
     m_iCenterOfMass = Eigen::Vector3d(0, 0, 0);
@@ -128,7 +128,7 @@ void deformableMesh::MakeCluster(){
     selector->AllScalarsOff();
 
 
-    vtkMath::RandomSeed(8775070); // for reproducibility
+    // vtkMath::RandomSeed(8775070); // for reproducibility
     for(int cluster=0 ; cluster<dicer->GetNumberOfActualPieces() ; cluster++){
         selector->ThresholdBetween(cluster, cluster);
 
@@ -161,16 +161,17 @@ void deformableMesh::MakeCluster(){
         ///Test using Cluster
         for(int clusterIdx = 0 ; clusterIdx < m_clusterID.size() ; clusterIdx++){
 
-            m_c_iCenterOfMass.push_back( Eigen::Vector3d(0, 0, 0));
-            m_c_cCenterOfMass.push_back( Eigen::Vector3d(0, 0, 0));
+            
             int nPoints = m_clusterID[clusterIdx].size();
+
+            Eigen::Vector3d CenterOfMAss(0, 0, 0);
 
             //Calculate Initial Center Of Mass
             for(int idx = 0 ; idx < nPoints ; idx++){
                 int pointIdx = m_clusterID[clusterIdx][idx];
-                m_c_iCenterOfMass[clusterIdx] += Eigen::Vector3d(m_data->GetPoint(pointIdx));                
+                CenterOfMAss += Eigen::Vector3d(m_data->GetPoint(pointIdx));                
             }
-            m_c_iCenterOfMass[clusterIdx] /= nPoints;
+            CenterOfMAss /= nPoints;
 
             m_c_Aqq.push_back(Eigen::MatrixXd::Zero(3,3));
             m_c_AQQ.push_back(Eigen::MatrixXd::Zero(9,9));
@@ -179,7 +180,7 @@ void deformableMesh::MakeCluster(){
             std::vector<Eigen::VectorXd> c_Qi;
             for(int idx = 0 ; idx<nPoints ; idx++){
                 int pointIdx = m_clusterID[clusterIdx][idx];
-                Eigen::Vector3d qi = Eigen::Vector3d(m_data->GetPoint(pointIdx)) - m_c_iCenterOfMass[clusterIdx];
+                Eigen::Vector3d qi = Eigen::Vector3d(m_data->GetPoint(pointIdx)) - CenterOfMAss;
 
                 Eigen::VectorXd Qi(9);
                 Qi << qi[0], qi[1], qi[2], qi[0]*qi[0], qi[1]*qi[1], qi[2]*qi[2], qi[0]*qi[1], qi[1]*qi[2], qi[2]*qi[0];
@@ -221,14 +222,15 @@ void deformableMesh::ComputeMesheless(){
     //Use Cluster
     for(int clusterIdx = 0 ; clusterIdx < m_clusterID.size() ; clusterIdx++){
         int nPoints = m_clusterID[clusterIdx].size();
+        
 
-        m_c_cCenterOfMass[clusterIdx] = Eigen::Vector3d(0, 0, 0);
+        Eigen::Vector3d CenterOfMAss(0, 0, 0);
 
         for(int idx = 0 ; idx < nPoints ; idx++){
             int pointIdx = m_clusterID[clusterIdx][idx];
-            m_c_cCenterOfMass[clusterIdx] += Eigen::Vector3d(m_data->GetPoint(pointIdx));
+            CenterOfMAss += Eigen::Vector3d(m_data->GetPoint(pointIdx));
         }
-        m_c_cCenterOfMass[clusterIdx] /= nPoints;
+        CenterOfMAss /= nPoints;
 
 
         //Calculate Apq
@@ -237,7 +239,7 @@ void deformableMesh::ComputeMesheless(){
         
         for(int idx = 0 ; idx < nPoints ; idx++){
             int pointIdx = m_clusterID[clusterIdx][idx];
-            Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(pointIdx)) - m_c_cCenterOfMass[clusterIdx];
+            Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(pointIdx)) - CenterOfMAss;
             
             Apq += m_mass * pi * m_c_qi[clusterIdx][idx].transpose();
             APQ += m_mass * pi * m_c_Qi[clusterIdx][idx].transpose();
@@ -261,16 +263,17 @@ void deformableMesh::ComputeMesheless(){
 
         //Calculate Goal Position
         for(int idx = 0 ; idx < nPoints ; idx++){
-            int pointIdx = m_clusterID[clusterIdx][idx];
-            Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(pointIdx)) - m_c_cCenterOfMass[clusterIdx];
+            int pointIdx = m_clusterID[clusterIdx][idx];            
             
 
-            Eigen::Vector3d gi =  ( beta*AA + (1-beta)*RR )*m_c_Qi[clusterIdx][idx]+ m_c_cCenterOfMass[clusterIdx];
+            Eigen::Vector3d gi =  ( beta*AA + (1-beta)*RR )*m_c_Qi[clusterIdx][idx]+ CenterOfMAss;
             Eigen::Vector3d xi = Eigen::Vector3d(m_data->GetPoint(pointIdx));
+
+            std::cout << gi.transpose() << std::endl;
 
 
             //Update Ground
-            m_gData->GetPoints()->SetPoint(idx, gi[0], gi[1], gi[2]);
+            m_gData->GetPoints()->SetPoint(pointIdx, gi[0], gi[1], gi[2]);
 
             current.row(0) = m_velocity[pointIdx];
             current.row(1) = xi;        
@@ -279,10 +282,12 @@ void deformableMesh::ComputeMesheless(){
             ground.row(1) = alpha * (gi);
 
             Eigen::MatrixXd result = factor * current + ground;
-            std::cout << ground << std::endl;
+
+            // m_results[pointIdx].row(0) = m_velocity[pointIdx] + (alpha * (gi) / m_timeStep) + m_timeStep*m_force[pointIdx]/m_mass;
+            
             
 
-            m_results[pointIdx] += result;
+            m_results[pointIdx] = result;
             m_avg[pointIdx] ++;                        
         }
     }
@@ -346,14 +351,16 @@ void deformableMesh::ComputeMesheless(){
     //Update Position and velocity
     for(int pointIdx = 17 ; pointIdx < m_data->GetNumberOfPoints() ; pointIdx++){
         
-        m_results[pointIdx] /= m_avg[pointIdx];
+        //m_results[pointIdx] /= m_avg[pointIdx];
         
 
         //Velocity, *0.9 for temporariy
         m_velocity[pointIdx] = m_results[pointIdx].row(0);
+        Eigen::Vector3d position(m_data->GetPoint(pointIdx));
+        position += m_velocity[pointIdx] * m_timeStep;
 
         
-        m_data->GetPoints()->SetPoint(pointIdx, m_results[pointIdx].row(1)[0], m_results[pointIdx].row(1)[1], m_results[pointIdx].row(1)[2]);                
+        m_data->GetPoints()->SetPoint(pointIdx, position[0], position[1], position[2]); 
 
     }
 

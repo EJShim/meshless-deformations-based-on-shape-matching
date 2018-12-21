@@ -49,9 +49,7 @@ class deformableMesh{
 
 
 
-    ////Temp for clustering
-    std::vector<Eigen::Vector3d> m_c_iCenterOfMass;
-    std::vector<Eigen::Vector3d> m_c_cCenterOfMass;
+    ////Temp for clustering    
     std::vector<std::vector<Eigen::Vector3d>> m_c_qi;
     std::vector<std::vector<Eigen::VectorXd>> m_c_Qi;
     
