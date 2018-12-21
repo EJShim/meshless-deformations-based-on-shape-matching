@@ -34,7 +34,9 @@ class deformableMesh{
 
     //Force
     std::vector<Eigen::Vector3d> m_force;
-    std::vector<Eigen::Vector3d> m_velocity;
+    std::vector<Eigen::Vector3d> m_velocity;    
+    std::vector<Eigen::MatrixXd> m_results;
+    std::vector<int> m_avg;
     
     ///For Masehlsess
     Eigen::Vector3d m_iCenterOfMass;
@@ -44,6 +46,18 @@ class deformableMesh{
     
     Eigen::Matrix3d m_Aqq;
     Eigen::MatrixXd m_AQQ;
+
+
+
+    ////Temp for clustering
+    std::vector<Eigen::Vector3d> m_c_iCenterOfMass;
+    std::vector<Eigen::Vector3d> m_c_cCenterOfMass;
+    std::vector<std::vector<Eigen::Vector3d>> m_c_qi;
+    std::vector<std::vector<Eigen::VectorXd>> m_c_Qi;
+    
+    std::vector<Eigen::Matrix3d> m_c_Aqq;
+    std::vector<Eigen::MatrixXd> m_c_AQQ;
+
 
 
     //Seelected Point, Boundary Condition

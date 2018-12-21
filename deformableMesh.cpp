@@ -76,7 +76,10 @@ void deformableMesh::InitializeSystem(){
     for(int idx = 0 ; idx < nPoints ; idx++){
         Eigen::Vector3d velocity(0, 0, 0);
         Eigen::Vector3d force(0, 0, 0);
+        
 
+        m_avg.push_back(0);
+        m_results.push_back(Eigen::MatrixXd::Zero(2, 3));
         m_velocity.push_back(velocity);
         m_force.push_back(force);
 
@@ -115,11 +118,9 @@ void deformableMesh::MakeCluster(){
 //Initialize Clustering
     vtkSmartPointer<vtkOBBDicer> dicer = vtkSmartPointer<vtkOBBDicer>::New();
     dicer->SetInputData(m_data);
-    dicer->SetNumberOfPieces(4);
+    dicer->SetNumberOfPieces(1);
     dicer->SetDiceModeToSpecifiedNumberOfPieces();
     dicer->Update();
-
-    std::cout << "Actual Number of Cluster : " << dicer->GetNumberOfActualPieces() << std::endl;
 
     vtkSmartPointer<vtkThreshold> selector = vtkSmartPointer<vtkThreshold>::New();
     selector->SetInputArrayToProcess(0, 0, 0, 0, "vtkOBBDicer_GroupIds");
@@ -142,9 +143,9 @@ void deformableMesh::MakeCluster(){
 
         //Visualize Different Cluster Color
         float color[3];
-        color[0] = vtkMath::Random(0, 255);
-        color[1] = vtkMath::Random(0, 255);
-        color[2] = vtkMath::Random(0, 255);
+        color[0] = vtkMath::Random(64, 255);
+        color[1] = vtkMath::Random(64, 255);
+        color[2] = vtkMath::Random(64, 255);
         
         for(int idx = 0 ; idx < subCluster->GetNumberOfPoints() ; idx++){
             double* p = subCluster->GetPoint(idx);
@@ -154,94 +155,206 @@ void deformableMesh::MakeCluster(){
             m_vertexColors->SetTuple3(pointId, color[0], color[1], color[2]);
         }
         m_clusterID.push_back(idArray);
-    }    
+
+
+
+        ///Test using Cluster
+        for(int clusterIdx = 0 ; clusterIdx < m_clusterID.size() ; clusterIdx++){
+
+            m_c_iCenterOfMass.push_back( Eigen::Vector3d(0, 0, 0));
+            m_c_cCenterOfMass.push_back( Eigen::Vector3d(0, 0, 0));
+            int nPoints = m_clusterID[clusterIdx].size();
+
+            //Calculate Initial Center Of Mass
+            for(int idx = 0 ; idx < nPoints ; idx++){
+                int pointIdx = m_clusterID[clusterIdx][idx];
+                m_c_iCenterOfMass[clusterIdx] += Eigen::Vector3d(m_data->GetPoint(pointIdx));                
+            }
+            m_c_iCenterOfMass[clusterIdx] /= nPoints;
+
+            m_c_Aqq.push_back(Eigen::MatrixXd::Zero(3,3));
+            m_c_AQQ.push_back(Eigen::MatrixXd::Zero(9,9));
+
+            std::vector<Eigen::Vector3d> c_qi;
+            std::vector<Eigen::VectorXd> c_Qi;
+            for(int idx = 0 ; idx<nPoints ; idx++){
+                int pointIdx = m_clusterID[clusterIdx][idx];
+                Eigen::Vector3d qi = Eigen::Vector3d(m_data->GetPoint(pointIdx)) - m_c_iCenterOfMass[clusterIdx];
+
+                Eigen::VectorXd Qi(9);
+                Qi << qi[0], qi[1], qi[2], qi[0]*qi[0], qi[1]*qi[1], qi[2]*qi[2], qi[0]*qi[1], qi[1]*qi[2], qi[2]*qi[0];
+
+                m_c_Aqq[clusterIdx] += m_mass * qi * qi.transpose();
+                m_c_AQQ[clusterIdx] += m_mass * Qi * Qi.transpose();
+                
+                c_qi.push_back(qi);
+                c_Qi.push_back(Qi);
+            }
+
+            m_c_qi.push_back(c_qi);
+            m_c_Qi.push_back(c_Qi);
+
+            m_c_Aqq[clusterIdx] = m_c_Aqq[clusterIdx].inverse();
+            m_c_AQQ[clusterIdx] = m_c_AQQ[clusterIdx].inverse();
+        } 
+    }
+            
 }
 
 void deformableMesh::ComputeMesheless(){
-    //Get CenterOfMass    
-    int nPoints = m_data->GetNumberOfPoints();    
 
 
-    m_cCenterOfMass = Eigen::Vector3d(0, 0, 0);        
-    for(int idx = 0 ; idx < nPoints ; idx++){
-        m_cCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
-    }
-    m_cCenterOfMass /= nPoints;
-
-
-
-    //Calculate Apq
-    Eigen::Matrix3d Apq = Eigen::MatrixXd::Zero(3,3);
-    Eigen::MatrixXd APQ = Eigen::MatrixXd::Zero(3,9);
-    
-    for(int idx = 0 ; idx < nPoints ; idx++){
-        Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - m_cCenterOfMass;
-        
-        Apq += m_mass * pi * m_qi[idx].transpose();
-        APQ += m_mass * pi * m_Qi[idx].transpose();
-    }
-
-    
-
-
-    //Inverse SQRT???
-    Eigen::Matrix3d S = Apq.transpose() * Apq;
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(S);
-    Eigen::Matrix3d sqrt_S = es.operatorInverseSqrt();
-
-    Eigen::Matrix3d R = Apq * sqrt_S;
-    Eigen::MatrixXd RR = Eigen::MatrixXd::Zero(3, 9);
-    RR.block<3,3>(0,0) = R;
-    
-
-
-    //Matrix A
-    Eigen::Matrix3d A = Apq * m_Aqq;
-    Eigen::MatrixXd AA = APQ * m_AQQ;
-
-
+    //Spring-Damping Factors
     double alpha = 0.9;
     double beta = 0.9;
     double damping = 0.05;
-
-
-    
     Eigen::Matrix2d factor(2, 2);
     factor  << 1.0-damping, -alpha/m_timeStep,
                 m_timeStep, 1-alpha;    
+
+
+    //Current and Ground Truth X and V
     Eigen::MatrixXd current(2, 3);
-    Eigen::MatrixXd ground(2, 3);
+    Eigen::MatrixXd ground(2, 3);    
+    
+    
+    //Use Cluster
+    for(int clusterIdx = 0 ; clusterIdx < m_clusterID.size() ; clusterIdx++){
+        int nPoints = m_clusterID[clusterIdx].size();
+
+        m_c_cCenterOfMass[clusterIdx] = Eigen::Vector3d(0, 0, 0);
+
+        for(int idx = 0 ; idx < nPoints ; idx++){
+            int pointIdx = m_clusterID[clusterIdx][idx];
+            m_c_cCenterOfMass[clusterIdx] += Eigen::Vector3d(m_data->GetPoint(pointIdx));
+        }
+        m_c_cCenterOfMass[clusterIdx] /= nPoints;
 
 
-    // std::cout << AA << std::endl << std::endl;
+        //Calculate Apq
+        Eigen::Matrix3d Apq = Eigen::MatrixXd::Zero(3,3);
+        Eigen::MatrixXd APQ = Eigen::MatrixXd::Zero(3,9);
+        
+        for(int idx = 0 ; idx < nPoints ; idx++){
+            int pointIdx = m_clusterID[clusterIdx][idx];
+            Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(pointIdx)) - m_c_cCenterOfMass[clusterIdx];
+            
+            Apq += m_mass * pi * m_c_qi[clusterIdx][idx].transpose();
+            APQ += m_mass * pi * m_c_Qi[clusterIdx][idx].transpose();
+        }
 
-    //Update Position
-    for(int idx = 0 ; idx < nPoints ; idx++){
 
-        Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - m_cCenterOfMass;
+
+        //Inverse SQRT???
+        Eigen::Matrix3d S = Apq.transpose() * Apq;
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(S);
+        Eigen::Matrix3d sqrt_S = es.operatorInverseSqrt();
+
+        Eigen::Matrix3d R = Apq * sqrt_S;
+        Eigen::MatrixXd RR = Eigen::MatrixXd::Zero(3, 9);
+        RR.block<3,3>(0,0) = R;
+
+        //Matrix A
+        Eigen::Matrix3d A = Apq * m_c_Aqq[clusterIdx];
+        Eigen::MatrixXd AA = APQ * m_c_AQQ[clusterIdx];
+
+
+        //Calculate Goal Position
+        for(int idx = 0 ; idx < nPoints ; idx++){
+            int pointIdx = m_clusterID[clusterIdx][idx];
+            Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(pointIdx)) - m_c_cCenterOfMass[clusterIdx];
+            
+
+            Eigen::Vector3d gi =  ( beta*AA + (1-beta)*RR )*m_c_Qi[clusterIdx][idx]+ m_c_cCenterOfMass[clusterIdx];
+            Eigen::Vector3d xi = Eigen::Vector3d(m_data->GetPoint(pointIdx));
+
+
+            //Update Ground
+            m_gData->GetPoints()->SetPoint(idx, gi[0], gi[1], gi[2]);
+
+            current.row(0) = m_velocity[pointIdx];
+            current.row(1) = xi;        
+
+            ground.row(0) = (alpha * (gi) / m_timeStep) + m_timeStep*m_force[pointIdx]/m_mass;
+            ground.row(1) = alpha * (gi);
+
+            Eigen::MatrixXd result = factor * current + ground;
+            std::cout << ground << std::endl;
+            
+
+            m_results[pointIdx] += result;
+            m_avg[pointIdx] ++;                        
+        }
+    }
+
+
+
+
+    // //One Cluster Method
+    // int nPoints = m_data->GetNumberOfPoints();    
+    // m_cCenterOfMass = Eigen::Vector3d(0, 0, 0);        
+    // for(int idx = 0 ; idx < nPoints ; idx++){
+    //     m_cCenterOfMass += Eigen::Vector3d(m_data->GetPoint(idx));
+    // }
+    // m_cCenterOfMass /= nPoints;
+    // //Calculate Apq
+    // Eigen::Matrix3d Apq = Eigen::MatrixXd::Zero(3,3);
+    // Eigen::MatrixXd APQ = Eigen::MatrixXd::Zero(3,9);
+    
+    // for(int idx = 0 ; idx < nPoints ; idx++){
+    //     Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - m_cCenterOfMass;
+        
+    //     Apq += m_mass * pi * m_qi[idx].transpose();
+    //     APQ += m_mass * pi * m_Qi[idx].transpose();
+    // }
+    // //Inverse SQRT???
+    // Eigen::Matrix3d S = Apq.transpose() * Apq;
+    // Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(S);
+    // Eigen::Matrix3d sqrt_S = es.operatorInverseSqrt();
+
+    // Eigen::Matrix3d R = Apq * sqrt_S;
+    // Eigen::MatrixXd RR = Eigen::MatrixXd::Zero(3, 9);
+    // RR.block<3,3>(0,0) = R;
+    // //Matrix A
+    // Eigen::Matrix3d A = Apq * m_Aqq;
+    // Eigen::MatrixXd AA = APQ * m_AQQ;
+    // //Update Position
+    // for(int idx = 0 ; idx < nPoints ; idx++){
+
+    //     Eigen::Vector3d pi = Eigen::Vector3d(m_data->GetPoint(idx)) - m_cCenterOfMass;
         
 
-        Eigen::Vector3d gi =  ( beta*AA + (1-beta)*RR )*m_Qi[idx]+ m_cCenterOfMass;
-        Eigen::Vector3d xi = Eigen::Vector3d(m_data->GetPoint(idx));
-
-        current.row(0) = m_velocity[idx];
-        current.row(1) = xi;        
+    //     Eigen::Vector3d gi =  ( beta*AA + (1-beta)*RR )*m_Qi[idx]+ m_cCenterOfMass;
+    //     Eigen::Vector3d xi = Eigen::Vector3d(m_data->GetPoint(idx));
 
 
-        ground.row(0) = (alpha * (gi) / m_timeStep) + m_timeStep*m_force[idx]/m_mass;
-        ground.row(1) = alpha * (gi);
+    //     //Update Ground
+    //     m_gData->GetPoints()->SetPoint(idx, gi[0], gi[1], gi[2]);
 
-        Eigen::MatrixXd results = factor*current + ground;        
+    //     current.row(0) = m_velocity[idx];
+    //     current.row(1) = xi;        
+
+
+    //     ground.row(0) = (alpha * (gi) / m_timeStep) + m_timeStep*m_force[idx]/m_mass;
+    //     ground.row(1) = alpha * (gi);
+
+    //     // Eigen::MatrixXd results = factor*current + ground;        
+
+    //     m_results[idx] += factor*current + ground;
+    // }
+
+    //Update Position and velocity
+    for(int pointIdx = 17 ; pointIdx < m_data->GetNumberOfPoints() ; pointIdx++){
+        
+        m_results[pointIdx] /= m_avg[pointIdx];
         
 
         //Velocity, *0.9 for temporariy
-        m_velocity[idx] = results.row(0);
-        Eigen::Vector3d color = results.row(0).normalized() * 255.0;
-        // m_vertexColors->SetTuple3(idx, abs(color[0]), abs(color[1]), abs(color[2]));
+        m_velocity[pointIdx] = m_results[pointIdx].row(0);
 
-        //Position        
-        m_data->GetPoints()->SetPoint(idx, results.row(1)[0], results.row(1)[1], results.row(1)[2]);
-        m_gData->GetPoints()->SetPoint(idx, gi[0], gi[1], gi[2]);
+        
+        m_data->GetPoints()->SetPoint(pointIdx, m_results[pointIdx].row(1)[0], m_results[pointIdx].row(1)[1], m_results[pointIdx].row(1)[2]);                
+
     }
 
 
@@ -260,6 +373,8 @@ void deformableMesh::UpdateForce(){
 
     for(int idxPoint = 0 ; idxPoint< m_data->GetNumberOfPoints() ; idxPoint++){        
             m_force[idxPoint] = force;
+            m_avg[idxPoint] = 0;
+            m_results[idxPoint] = Eigen::MatrixXd::Zero(2, 3);
     }
     
 }

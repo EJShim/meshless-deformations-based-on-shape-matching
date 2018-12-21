@@ -60,7 +60,7 @@ void Mainwindow::InitObjects(){
     cylinderSource->SetResolution(10);
     cylinderSource->Update();
 
-    m_currentObject = new deformableMesh(reader->GetOutput());
+    m_currentObject = new deformableMesh(surfaceExtractor->GetOutput());
 
 
     //Initialize Arrow Actor
