@@ -43,7 +43,6 @@ void Mainwindow::InitObjects(){
     reader->SetFileName(stlPath.c_str());
     reader->Update();
 
-
     // TestObject 1. deformableMesh
     vtkSmartPointer<vtkRectilinearGridToTetrahedra> formMesh = vtkSmartPointer<vtkRectilinearGridToTetrahedra>::New();
     formMesh->SetInput(20, 20, 100, 10.0, 10.0, 10.0, 0.1);        
@@ -60,7 +59,7 @@ void Mainwindow::InitObjects(){
     cylinderSource->SetResolution(10);
     cylinderSource->Update();
 
-    m_currentObject = new deformableMesh(surfaceExtractor->GetOutput());
+    m_currentObject = new deformableMesh(reader->GetOutput());
 
 
     //Initialize Arrow Actor

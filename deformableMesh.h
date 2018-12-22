@@ -28,6 +28,7 @@ class deformableMesh{
     vtkSmartPointer<vtkUnsignedCharArray> m_vertexColors;    
 
     //Boundary
+    int m_nCluster = 8;
     double m_timeStep = 0.1;
     double m_gravity = -0.0;
     double m_mass = 1.0;
@@ -39,20 +40,18 @@ class deformableMesh{
     std::vector<int> m_avg;
     
     ///For Masehlsess
-    Eigen::Vector3d m_iCenterOfMass;
-    Eigen::Vector3d m_cCenterOfMass;
-    std::vector<Eigen::Vector3d> m_qi;
-    std::vector<Eigen::VectorXd> m_Qi;
-    
-    Eigen::Matrix3d m_Aqq;
-    Eigen::MatrixXd m_AQQ;
+    // Eigen::Vector3d m_iCenterOfMass;
+    // Eigen::Vector3d m_cCenterOfMass;
+    // std::vector<Eigen::Vector3d> m_qi;
+    // std::vector<Eigen::VectorXd> m_Qi;    
+    // Eigen::Matrix3d m_Aqq;
+    // Eigen::MatrixXd m_AQQ;
 
 
 
     ////Temp for clustering    
     std::vector<std::vector<Eigen::Vector3d>> m_c_qi;
     std::vector<std::vector<Eigen::VectorXd>> m_c_Qi;
-    
     std::vector<Eigen::Matrix3d> m_c_Aqq;
     std::vector<Eigen::MatrixXd> m_c_AQQ;
 
