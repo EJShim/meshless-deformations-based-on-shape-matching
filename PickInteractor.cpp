@@ -43,9 +43,6 @@ void PickInteractor::OnMouseMove(){
 this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 
       m_pointPicker->GetPickPosition(m_position);
-
-    // std::cout << "ID: " << m_id << ", Picked value: " << m_position[0] << " " << m_position[1] << " " << m_position[2] << std::endl;
-
 }
 
 void PickInteractor::OnLeftButtonUp(){

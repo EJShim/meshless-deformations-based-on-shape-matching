@@ -84,7 +84,7 @@ void deformableMesh::InitializeSystem(){
         m_force.push_back(force);
         m_vertexColors->InsertNextTuple3(255, 254, 0);
     }
-    // m_gData->GetPointData()->SetScalars(m_vertexColors);
+    m_gData->GetPointData()->SetScalars(m_vertexColors);
 }
 
 

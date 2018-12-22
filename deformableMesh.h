@@ -28,7 +28,7 @@ class deformableMesh{
     vtkSmartPointer<vtkUnsignedCharArray> m_vertexColors;    
 
     //Boundary
-    int m_nCluster = 8;
+    int m_nCluster = 2;
     double m_timeStep = 0.1;
     double m_gravity = -0.0;
     double m_mass = 1.0;

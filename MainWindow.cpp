@@ -59,7 +59,7 @@ void Mainwindow::InitObjects(){
     cylinderSource->SetResolution(10);
     cylinderSource->Update();
 
-    m_currentObject = new deformableMesh(reader->GetOutput());
+    m_currentObject = new deformableMesh(surfaceExtractor->GetOutput());
 
 
     //Initialize Arrow Actor
@@ -104,13 +104,6 @@ void Mainwindow::Tick(){
     }
 
     m_currentObject->ComputeMesheless();
-
-
-    
-    // m_currentObject->SetPointPosition(pickID, position[0], position[1] , position[2]);
-    
-    
-
     m_renderer->ResetCameraClippingRange();
 	m_renderer->GetRenderWindow()->Render();	
 
